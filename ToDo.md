@@ -1,1 +1,2 @@
 - [ ] Make bucket and iso3166-updates.json file publicly accessible (https://storage.googleapis.com/iso3166-updates/iso3166-updates.json).
+- [ ] Update <title> and logo on page (world emoji).

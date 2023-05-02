@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, render_template
 import requests
 import json 
 import iso3166
@@ -23,7 +23,17 @@ OBJECT_URL = "https://storage.googleapis.com/iso3166-updates/iso3166-updates.jso
 @app.route('/')
 def home():
     """
+    Default route for https://iso3166-updates.com. Returns all of the default
+    ISO3166 updates data from json.
 
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    :iso3166_updates : json
+      jsonified response of iso3166 updates.
     """
     #get html content from updates json in storage bucket, raise exception if status code != 200
     try:
@@ -32,13 +42,26 @@ def home():
     except requests.exceptions.HTTPError as err:
         raise SystemExit(err)
 
-    updates_data = page.json()
+    #convert content to json
+    iso3166_updates = page.json()
 
-    return updates_data
+    return render_template('index.html', string=iso3166_updates)
+    # return iso3166_updates
 
 @app.route('/api', methods=['GET'])
 def api():
     """
+    Main route for API (https://iso3166-updates.com/api) that can accept the alpha2 and 
+    year query string parameters and return the relevant ISO3166 updates.
+    
+    Parameters
+    ----------
+    None
+
+    Returns 
+    -------
+    :iso3166_updates : json
+      jsonified response of iso3166 updates.
     """
     #initialise vars
     iso3166_updates = {}
@@ -56,7 +79,7 @@ def api():
     except requests.exceptions.HTTPError as err:
         raise SystemExit(err)
 
-    updates_data = page.json()
+    iso3166_updates = page.json()
 
     #get current datetime object
     current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
@@ -76,9 +99,9 @@ def api():
         except:
             raise TypeError("Invalid data type for months parameter, cannot cast to int.")
 
-    #if no input parameters set then return all country update updates_data
+    #if no input parameters set then return all country update iso3166_updates
     if (year == [] and alpha2_code == [] and months == []):
-        return updates_data
+        return iso3166_updates
 
     #validate multiple alpha2 codes input, remove any invalid ones
     if (alpha2_code != []):
@@ -136,12 +159,12 @@ def api():
             year_range = False 
             break 
 
-    #get updates from updates_data object per country using alpha2 code
+    #get updates from iso3166_updates object per country using alpha2 code
     if (alpha2_code == [] and year == [] and months == []):
-        iso3166_updates = {alpha2_code[0]: updates_data[alpha2_code[0]]}
+        iso3166_updates = {alpha2_code[0]: iso3166_updates[alpha2_code[0]]}
     else:
         for code in alpha2_code:
-            iso3166_updates[code] = updates_data[code]
+            iso3166_updates[code] = iso3166_updates[code]
     
     #temporary updates object
     temp_iso3166_updates = {}
@@ -150,7 +173,7 @@ def api():
     if ((year != [] and alpha2_code == [] and months == []) or \
         ((year == [] or year != []) and alpha2_code == [] and months != [])): #**
         input_alpha2_codes  = list(iso3166.countries_by_alpha2.keys())
-        input_data = updates_data
+        input_data = iso3166_updates
     #else set input alpha2 codes to inputted and use corresponding updates data
     else:
         input_alpha2_codes = alpha2_code
