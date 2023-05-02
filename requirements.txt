@@ -1,7 +1,3 @@
 flask
 iso3166
-google-cloud
-google-api-python-client
-google-cloud-storage
 python-dateutil
-pandas

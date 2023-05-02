@@ -1,7 +1,5 @@
 from flask import Flask, request
 import requests
-from google.cloud import storage
-from google.oauth2 import service_account
 import json 
 import iso3166
 import re
