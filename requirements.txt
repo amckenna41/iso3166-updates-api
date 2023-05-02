@@ -1,3 +1,4 @@
 flask
 iso3166
 python-dateutil
+requests
