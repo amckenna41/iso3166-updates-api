@@ -255,7 +255,8 @@ def api():
     #set main updates dict to temp one
     iso3166_updates = temp_iso3166_updates
 
-    return render_template('index.html', string=iso3166_updates)
+    return iso3166_updates
+    # return render_template('index.html', string=iso3166_updates)
 
 if __name__ == '__main__':
     app.run(debug=True)
