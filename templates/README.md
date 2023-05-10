@@ -2,3 +2,4 @@
 
 ## Templates:
 * `index.html` - html template for main homepage.
+* `api.html` - html template for main api page.

@@ -1,2 +1,6 @@
-- [ ] Make bucket and iso3166-updates.json file publicly accessible (https://storage.googleapis.com/iso3166-updates/iso3166-updates.json).
-- [ ] Update <title> and logo on page (world emoji).
+- [X] Make bucket and iso3166-updates.json file publicly accessible (https://storage.googleapis.com/iso3166-updates/iso3166-updates.json).
+- [X] Update <title> and logo on page (world emoji).
+- [X] http://127.0.0.1:5000/api?alpha2=dasdjasd and http://127.0.0.1:5000/api?year=dasdjasd, should catch this alpha2 and year input error.
+- [ ] Make index.html into a more appealing front-end.
+- [X] For API, instead of returning all data when invalid alpha2/year input, return a jsonifed error message. Return all when any of args are empty. 
+- [X] Year regex isn't working if not (bool(re.match(r"^1|^2[0-9][0-9][0-9]", year_))): - will accept the year 20033. 

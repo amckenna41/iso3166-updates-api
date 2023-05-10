@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify
 import requests
 import json 
 import iso3166
@@ -46,7 +46,6 @@ def home():
     iso3166_updates = page.json()
 
     return render_template('index.html', string=iso3166_updates)
-    # return iso3166_updates
 
 @app.route('/api', methods=['GET'])
 def api():
@@ -72,6 +71,9 @@ def api():
     year = []
     months = []
 
+    #json object storing the message and status code 
+    error_message = {}
+
     #get html content from updates json in storage bucket, raise exception if status code != 200
     try:
         page = requests.get(OBJECT_URL, headers=USER_AGENT_HEADER)
@@ -79,7 +81,8 @@ def api():
     except requests.exceptions.HTTPError as err:
         raise SystemExit(err)
 
-    iso3166_updates = page.json()
+    #pgetull json from request object
+    all_iso3166_updates = page.json()
 
     #get current datetime object
     current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
@@ -87,12 +90,12 @@ def api():
     #parse alpha2 code parameter
     if not (request.args.get('alpha2') is None):
         alpha2_code = sorted([request.args.get('alpha2').upper()])
-
-    # #parse year parameter
+    
+    #parse year parameter
     if not (request.args.get('year') is None):
         year = [request.args.get('year').upper()]
 
-    # #parse months parameter
+    #parse months parameter
     if not (request.args.get('months') is None):
         try:
             months = int(request.args.get('months'))
@@ -101,8 +104,8 @@ def api():
 
     #if no input parameters set then return all country update iso3166_updates
     if (year == [] and alpha2_code == [] and months == []):
-        return iso3166_updates
-
+        return render_template('index.html', string=all_iso3166_updates)
+    
     #validate multiple alpha2 codes input, remove any invalid ones
     if (alpha2_code != []):
         if (',' in alpha2_code[0]):
@@ -115,7 +118,10 @@ def api():
         else:
             #if single alpha2 code passed in, validate its correctness
             if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[0]))) or (alpha2_code[0] not in list(iso3166.countries_by_alpha2.keys())):
-                alpha2_code.remove(alpha2_code[0])
+                error_message["message"] = f"Invalid 2 letter alpha-2 code input: {''.join(alpha2_code)}"
+                error_message["status"] = 400
+                return jsonify(error_message), 400
+                # alpha2_code.remove(alpha2_code[0])
 
     #a '-' seperating 2 years implies a year range of sought country updates, validate format of years in range
     if (year != [] and months == []):
@@ -147,24 +153,24 @@ def api():
             if (len(year) > 1):
                 year = []
                 less_than = False
-
+    
     for year_ in year:
         #skip to next iteration if < or > symbol
         if (year_ == '<' or year_ == '>'):
             continue
         #validate each year format using regex
-        if not (bool(re.match(r"^1|^2[0-9][0-9][0-9]", year_))):
-            # year = []
-            year.remove(year_)
-            year_range = False 
-            break 
+        if not (bool(re.match(r"^1[0-9][0-9][0-9]$|^2[0-9][0-9][0-9]$", year_))):
+            error_message["message"] = f"Invalid year input: {''.join(year)}"
+            error_message["status"] = 400
+            return jsonify(error_message), 400
 
     #get updates from iso3166_updates object per country using alpha2 code
     if (alpha2_code == [] and year == [] and months == []):
-        iso3166_updates = {alpha2_code[0]: iso3166_updates[alpha2_code[0]]}
+        # iso3166_updates = {alpha2_code[0]: all_iso3166_updates[alpha2_code[0]]}
+        iso3166_updates = all_iso3166_updates
     else:
         for code in alpha2_code:
-            iso3166_updates[code] = iso3166_updates[code]
+            iso3166_updates[code] = all_iso3166_updates[code]
     
     #temporary updates object
     temp_iso3166_updates = {}
@@ -173,14 +179,14 @@ def api():
     if ((year != [] and alpha2_code == [] and months == []) or \
         ((year == [] or year != []) and alpha2_code == [] and months != [])): #**
         input_alpha2_codes  = list(iso3166.countries_by_alpha2.keys())
-        input_data = iso3166_updates
+        input_data = all_iso3166_updates
     #else set input alpha2 codes to inputted and use corresponding updates data
     else:
         input_alpha2_codes = alpha2_code
         input_data = iso3166_updates
     
     #correct column order
-    reordered_columns = ['Date Issued', 'Edition/Newsletter', 'Description of change in newsletter', 'Code/Subdivision change']
+    reordered_columns = ['Date Issued', 'Edition/Newsletter', 'Code/Subdivision change', 'Description of change in newsletter']
 
     #use temp object to get updates data either for specific country/alpha2 code or for all
     #countries, dependant on input_alpha2_codes and input_data vars above
@@ -219,8 +225,8 @@ def api():
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
 
-    #if months parameter input then get updates within this months range
-    elif (months != []):
+    #if months parameter input then get updates within this months range, param must be 2 digits
+    elif ((months != []) and (bool(re.match(r"[0-9][0-9]$", str(months))))):
         for code in input_alpha2_codes:
             temp_iso3166_updates[code] = [] 
             for update in range(0, len(input_data[code])):
@@ -249,7 +255,7 @@ def api():
     #set main updates dict to temp one
     iso3166_updates = temp_iso3166_updates
 
-    return iso3166_updates
+    return render_template('index.html', string=iso3166_updates)
 
 if __name__ == '__main__':
     app.run(debug=True)
