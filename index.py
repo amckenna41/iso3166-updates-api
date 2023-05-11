@@ -44,7 +44,7 @@ def home():
 
     #convert content to json
     iso3166_updates = page.json()
-
+    
     return render_template('index.html', string=iso3166_updates)
 
 @app.route('/api', methods=['GET'])
