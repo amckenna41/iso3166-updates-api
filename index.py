@@ -11,7 +11,7 @@ from dateutil import relativedelta
 app = Flask(__name__)
 
 #initialise logging library 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 log = logging.getLogger(__name__)
 
 #initalise User-agent header for requests library 
@@ -61,6 +61,8 @@ def api():
     -------
     :iso3166_updates : json
       jsonified response of iso3166 updates.
+    :status_code : int
+        response status code.
     """
     #initialise vars
     iso3166_updates = {}
@@ -104,7 +106,7 @@ def api():
 
     #if no input parameters set then return all country update iso3166_updates
     if (year == [] and alpha2_code == [] and months == []):
-        return render_template('index.html', string=all_iso3166_updates)
+        return (jsonify(all_iso3166_updates), 200)
     
     #validate multiple alpha2 codes input, remove any invalid ones
     if (alpha2_code != []):
@@ -186,7 +188,7 @@ def api():
         input_data = iso3166_updates
     
     #correct column order
-    reordered_columns = ['Date Issued', 'Edition/Newsletter', 'Code/Subdivision change', 'Description of change in newsletter']
+    # reordered_columns = ['Date Issued', 'Edition/Newsletter', 'Code/Subdivision change', 'Description of change in newsletter']
 
     #use temp object to get updates data either for specific country/alpha2 code or for all
     #countries, dependant on input_alpha2_codes and input_data vars above
@@ -195,7 +197,7 @@ def api():
             temp_iso3166_updates[code] = []
             for update in range(0, len(input_data[code])):
                 #reorder dict columns
-                input_data[code][update] = {col: input_data[code][update][col] for col in reordered_columns}
+                # input_data[code][update] = {col: input_data[code][update][col] for col in reordered_columns}
                
                 #convert year in Date Issued column to string of year
                 temp_year = str(datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
@@ -225,23 +227,23 @@ def api():
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
 
-    #if months parameter input then get updates within this months range, param must be 2 digits
-    elif ((months != []) and (bool(re.match(r"[0-9][0-9]$", str(months))))):
+    #if months parameter input then get updates within this months range
+    elif (months != []):
         for code in input_alpha2_codes:
             temp_iso3166_updates[code] = [] 
             for update in range(0, len(input_data[code])):
                 #reorder dict columns
-                input_data[code][update] = {col: input_data[code][update][col] for col in reordered_columns}
+                # input_data[code][update] = {col: input_data[code][update][col] for col in reordered_columns}
                 
                 #convert date in Date Issued column to date object
                 row_date = (datetime.strptime(input_data[code][update]["Date Issued"], "%Y-%m-%d"))
                 
                 #calculate difference in dates
                 date_diff = relativedelta.relativedelta(current_datetime, row_date)
-                
+
                 #calculate months difference
                 diff_months = date_diff.months + (date_diff.years * 12)
-                
+
                 #if current updates row is <= month input param then add to temp object
                 if (diff_months <= months):
                     temp_iso3166_updates[code].append(input_data[code][update])
@@ -255,8 +257,7 @@ def api():
     #set main updates dict to temp one
     iso3166_updates = temp_iso3166_updates
 
-    return jsonify(iso3166_updates)
-    # return render_template('api.html', string=iso3166_updates)
+    return jsonify(iso3166_updates), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
