@@ -1,30 +1,39 @@
 from flask import Flask, request, render_template, jsonify
+from google.cloud import storage
+from google.oauth2 import service_account
+from googleapiclient import discovery
 import requests
 import json 
 import iso3166
 import re
+import os
 import logging
 import getpass
 from datetime import datetime
 from dateutil import relativedelta
 
+#initialise Flask app
 app = Flask(__name__)
 
 #initialise logging library 
-__version__ = "1.0.2"
+__version__ = "1.1.0"
 log = logging.getLogger(__name__)
 
 #initalise User-agent header for requests library 
 USER_AGENT_HEADER = {'User-Agent': 'iso3166-updates/{} ({}; {})'.format(__version__,
                                        'https://github.com/amckenna41/iso3166-updates', getpass.getuser())}
 
-OBJECT_URL = "https://storage.googleapis.com/iso3166-updates/iso3166-updates.json"
+#get Cloud Storage specific env vars
+sa_json_str = os.environ["SA_JSON"]
+project_id = os.environ["PROJECT_ID"]
+bucket_name = os.environ["BUCKET"]
+blob_name = os.environ["BLOB"]
 
 @app.route('/')
 def home():
     """
-    Default route for https://iso3166-updates.com. Returns all of the default
-    ISO3166 updates data from json.
+    Default route for https://iso3166-updates.com. Main homepage for API displaying the 
+    purpose of API and its documentation. 
 
     Parameters
     ----------
@@ -32,27 +41,33 @@ def home():
 
     Returns
     -------
-    :iso3166_updates : json
-      jsonified response of iso3166 updates.
+    :render_template : html
+      Flask html template for index.html page.
     """
-    #get html content from updates json in storage bucket, raise exception if status code != 200
-    try:
-        page = requests.get(OBJECT_URL, headers=USER_AGENT_HEADER)
-        page.raise_for_status()
-    except requests.exceptions.HTTPError as err:
-        raise SystemExit(err)
-
-    #convert content to json
-    iso3166_updates = page.json()
+    #convert str of service account from env var into json 
+    sa_json = json.loads(sa_json_str)
+    #pass service account json into credentials object
+    credentials = service_account.Credentials.from_service_account_info(sa_json)
+    #create GCP Storage client using credentials
+    storage_client = storage.Client(project=project_id, credentials=credentials)
+    #initialise bucket object
+    bucket = storage_client.bucket(bucket_name)
+    #get path to json blob in bucket
+    blob_path = "gs://" + bucket_name + "/" + blob_name
+    #load json from blob on bucket
+    all_iso3166_updates = json.loads(storage.Blob.from_string(blob_path, client=storage_client).download_as_text())
     
-    return render_template('index.html', string=iso3166_updates)
+    return render_template('index.html', string=all_iso3166_updates)
 
 @app.route('/api', methods=['GET'])
 def api():
     """
-    Main route for API (https://iso3166-updates.com/api) that can accept the alpha2 and 
-    year query string parameters and return the relevant ISO3166 updates.
-    
+    Main route for API (https://iso3166-updates.com/api) that can accept the alpha-2, 
+    year and months query string parameters and return the relevant ISO3166 updates.
+    The API uses a pre-created json with all the latest updates stored in a GCP Cloud
+    Storage bucket, the object is imported in after authentication and used as the
+    basis of the API.  
+
     Parameters
     ----------
     None
@@ -73,23 +88,26 @@ def api():
     year = []
     months = []
 
-    #json object storing the message and status code 
+    #json object storing the error message and status code 
     error_message = {}
 
-    #get html content from updates json in storage bucket, raise exception if status code != 200
-    try:
-        page = requests.get(OBJECT_URL, headers=USER_AGENT_HEADER)
-        page.raise_for_status()
-    except requests.exceptions.HTTPError as err:
-        raise SystemExit(err)
-
-    #pgetull json from request object
-    all_iso3166_updates = page.json()
+    #convert str of service account from env var into json 
+    sa_json = json.loads(sa_json_str)
+    #pass service account json into credentials object
+    credentials = service_account.Credentials.from_service_account_info(sa_json)
+    #create GCP Storage client using credentials
+    storage_client = storage.Client(project=project_id, credentials=credentials)
+    #initialise bucket object
+    bucket = storage_client.bucket(bucket_name)
+    #get path to json blob in bucket
+    blob_path = "gs://" + bucket_name + "/" + blob_name
+    #load json from blob on bucket
+    all_iso3166_updates = json.loads(storage.Blob.from_string(blob_path, client=storage_client).download_as_text())
 
     #get current datetime object
     current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
 
-    #parse alpha2 code parameter
+    #parse alpha-2 code parameter
     if not (request.args.get('alpha2') is None):
         alpha2_code = sorted([request.args.get('alpha2').upper()])
     
@@ -97,33 +115,66 @@ def api():
     if not (request.args.get('year') is None):
         year = [request.args.get('year').upper()]
 
-    #parse months parameter
+    #parse months parameter, return error message if invalid input
     if not (request.args.get('months') is None):
         try:
             months = int(request.args.get('months'))
         except:
-            raise TypeError("Invalid data type for months parameter, cannot cast to int.")
+            error_message["message"] = f"Invalid month input: {''.join(request.args.get('months'))}"
+            error_message["status"] = 400
+            return jsonify(error_message), 400
 
     #if no input parameters set then return all country update iso3166_updates
     if (year == [] and alpha2_code == [] and months == []):
         return (jsonify(all_iso3166_updates), 200)
     
-    #validate multiple alpha2 codes input, remove any invalid ones
+    def convert_to_alpha2(alpha3_code):
+        """ 
+        Convert an ISO3166 country's 3 letter alpha-3 code into its 2 letter
+        alpha-2 counterpart. 
+
+        Parameters 
+        ----------
+        :alpha3_code: str
+            3 letter ISO3166 country code.
+        
+        Returns
+        -------
+        :iso3166.countries_by_alpha3[alpha3_code].alpha2: str
+            2 letter ISO3166 country code. 
+        """
+        #return error if 3 letter alpha-3 code not found
+        if not (alpha3_code in list(iso3166.countries_by_alpha3.keys())):
+            error_message["message"] = f"Invalid 3 letter alpha-3 code input: {''.join(alpha3_code)}"
+            error_message["status"] = 400
+            return jsonify(error_message), 400
+        else:
+            #use iso3166 package to find corresponding alpha-2 code from its alpha-3
+            return iso3166.countries_by_alpha3[alpha3_code].alpha2
+
+    #validate multiple alpha-2 codes input, remove any invalid ones
     if (alpha2_code != []):
         if (',' in alpha2_code[0]):
             alpha2_code = alpha2_code[0].split(',')
             alpha2_code = [code.strip() for code in alpha2_code]
-            for code in alpha2_code:
-                #use regex to validate format of alpha2 codes
-                if not (bool(re.match(r"^[A-Z]{2}$", code))) or (code not in list(iso3166.countries_by_alpha2.keys())):
-                    alpha2_code.remove(code)
+            for code in range(0, len(alpha2_code)):
+                #api can accept 3 letter alpha-3 code for country, this has to be converted into its alpha-2 counterpart
+                if (len(alpha2_code[code]) == 3):
+                    alpha2_code[code] = convert_to_alpha2(alpha2_code[code])
+                #use regex to validate format of alpha-2 codes
+                if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[code]))) or (alpha2_code[code] not in list(iso3166.countries_by_alpha2.keys())):
+                    alpha2_code.remove(alpha2_code[code])
         else:
-            #if single alpha2 code passed in, validate its correctness
-            if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[0]))) or (alpha2_code[0] not in list(iso3166.countries_by_alpha2.keys())):
+            #api can accept 3 letter alpha-3 code for country, this has to be converted into its alpha-2 counterpart
+            if (len(alpha2_code[0]) == 3):
+                alpha2_code[0] = convert_to_alpha2(alpha2_code[0])
+            #if single alpha-2 code passed in, validate its correctness
+            if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[0]))) or \
+                (alpha2_code[0] not in list(iso3166.countries_by_alpha2.keys()) and \
+                alpha2_code[0] not in list(iso3166.countries_by_alpha3.keys())):
                 error_message["message"] = f"Invalid 2 letter alpha-2 code input: {''.join(alpha2_code)}"
                 error_message["status"] = 400
                 return jsonify(error_message), 400
-                # alpha2_code.remove(alpha2_code[0])
 
     #a '-' seperating 2 years implies a year range of sought country updates, validate format of years in range
     if (year != [] and months == []):
@@ -166,9 +217,8 @@ def api():
             error_message["status"] = 400
             return jsonify(error_message), 400
 
-    #get updates from iso3166_updates object per country using alpha2 code
+    #get updates from iso3166_updates object per country using alpha-2 code
     if (alpha2_code == [] and year == [] and months == []):
-        # iso3166_updates = {alpha2_code[0]: all_iso3166_updates[alpha2_code[0]]}
         iso3166_updates = all_iso3166_updates
     else:
         for code in alpha2_code:
@@ -177,28 +227,23 @@ def api():
     #temporary updates object
     temp_iso3166_updates = {}
 
-    #if no valid alpha2 codes input use all alpha2 codes from iso3166 and all updates data
+    #if no valid alpha-2 codes input, use all alpha-2 codes from iso3166 and all updates data
     if ((year != [] and alpha2_code == [] and months == []) or \
-        ((year == [] or year != []) and alpha2_code == [] and months != [])): #**
+        ((year == [] or year != []) and alpha2_code == [] and months != [])):
         input_alpha2_codes  = list(iso3166.countries_by_alpha2.keys())
         input_data = all_iso3166_updates
-    #else set input alpha2 codes to inputted and use corresponding updates data
+    #else set input alpha-2 codes to inputted and use corresponding updates data
     else:
         input_alpha2_codes = alpha2_code
         input_data = iso3166_updates
     
-    #correct column order
-    # reordered_columns = ['Date Issued', 'Edition/Newsletter', 'Code/Subdivision change', 'Description of change in newsletter']
-
-    #use temp object to get updates data either for specific country/alpha2 code or for all
+    #use temp object to get updates data either for specific country/alpha-2 code or for all
     #countries, dependant on input_alpha2_codes and input_data vars above
     if (year != [] and months == []):
         for code in input_alpha2_codes:
             temp_iso3166_updates[code] = []
             for update in range(0, len(input_data[code])):
-                #reorder dict columns
-                # input_data[code][update] = {col: input_data[code][update][col] for col in reordered_columns}
-               
+
                 #convert year in Date Issued column to string of year
                 temp_year = str(datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
 
@@ -223,18 +268,21 @@ def api():
                         if (temp_year != "" and (temp_year == year_)):
                             temp_iso3166_updates[code].append(input_data[code][update])
             
-            #if current alpha2 has no rows for selected year/year range, remove from temp object
+            #if current alpha-2 has no rows for selected year/year range, remove from temp object
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
 
     #if months parameter input then get updates within this months range
     elif (months != []):
+        #return error if invalid month value input
+        if not (str(months).isdigit()):
+            error_message["message"] = f"Invalid month input: {''.join(months)}"
+            error_message["status"] = 400
+            return jsonify(error_message), 400
         for code in input_alpha2_codes:
             temp_iso3166_updates[code] = [] 
             for update in range(0, len(input_data[code])):
-                #reorder dict columns
-                # input_data[code][update] = {col: input_data[code][update][col] for col in reordered_columns}
-                
+
                 #convert date in Date Issued column to date object
                 row_date = (datetime.strptime(input_data[code][update]["Date Issued"], "%Y-%m-%d"))
                 
@@ -248,7 +296,7 @@ def api():
                 if (diff_months <= months):
                     temp_iso3166_updates[code].append(input_data[code][update])
    
-            #if current alpha2 has no rows for selected month range, remove from temp object
+            #if current alpha-2 has no rows for selected month range, remove from temp object
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
     else:

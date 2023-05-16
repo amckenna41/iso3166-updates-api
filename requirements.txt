@@ -2,3 +2,6 @@ flask
 iso3166
 python-dateutil
 requests
+google-auth
+google-cloud-storage
+google-api-python-client

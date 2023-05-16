@@ -3,4 +3,7 @@
 - [X] http://127.0.0.1:5000/api?alpha2=dasdjasd and http://127.0.0.1:5000/api?year=dasdjasd, should catch this alpha2 and year input error.
 - [ ] Make index.html into a more appealing front-end.
 - [X] For API, instead of returning all data when invalid alpha2/year input, return a jsonifed error message. Return all when any of args are empty. 
-- [X] Year regex isn't working if not (bool(re.match(r"^1|^2[0-9][0-9][0-9]", year_))): - will accept the year 20033. 
+- [X] Make Storage Bucket unpublic.
+- [X] Use Python GCP client library instead of requests library:
+- [X] Figure out how to upload secrets.json to vercel, pass in SA json into env var.
+- [X] Passing in alpha-3 code should still return data, convert to alpha-2 code in the code.
