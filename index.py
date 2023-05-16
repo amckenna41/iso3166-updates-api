@@ -29,6 +29,17 @@ project_id = os.environ["PROJECT_ID"]
 bucket_name = os.environ["BUCKET"]
 blob_name = os.environ["BLOB"]
 
+#convert str of service account from env var into json 
+sa_json = json.loads(sa_json_str)
+#pass service account json into credentials object
+credentials = service_account.Credentials.from_service_account_info(sa_json)
+#create GCP Storage client using credentials
+storage_client = storage.Client(project=project_id, credentials=credentials)
+#initialise bucket object
+bucket = storage_client.bucket(bucket_name)
+#get path to json blob in bucket
+blob_path = "gs://" + bucket_name + "/" + blob_name
+
 @app.route('/')
 def home():
     """
@@ -44,16 +55,6 @@ def home():
     :render_template : html
       Flask html template for index.html page.
     """
-    #convert str of service account from env var into json 
-    sa_json = json.loads(sa_json_str)
-    #pass service account json into credentials object
-    credentials = service_account.Credentials.from_service_account_info(sa_json)
-    #create GCP Storage client using credentials
-    storage_client = storage.Client(project=project_id, credentials=credentials)
-    #initialise bucket object
-    bucket = storage_client.bucket(bucket_name)
-    #get path to json blob in bucket
-    blob_path = "gs://" + bucket_name + "/" + blob_name
     #load json from blob on bucket
     all_iso3166_updates = json.loads(storage.Blob.from_string(blob_path, client=storage_client).download_as_text())
     
@@ -90,17 +91,8 @@ def api():
 
     #json object storing the error message and status code 
     error_message = {}
+    error_message["status"] = 400
 
-    #convert str of service account from env var into json 
-    sa_json = json.loads(sa_json_str)
-    #pass service account json into credentials object
-    credentials = service_account.Credentials.from_service_account_info(sa_json)
-    #create GCP Storage client using credentials
-    storage_client = storage.Client(project=project_id, credentials=credentials)
-    #initialise bucket object
-    bucket = storage_client.bucket(bucket_name)
-    #get path to json blob in bucket
-    blob_path = "gs://" + bucket_name + "/" + blob_name
     #load json from blob on bucket
     all_iso3166_updates = json.loads(storage.Blob.from_string(blob_path, client=storage_client).download_as_text())
 
@@ -121,7 +113,6 @@ def api():
             months = int(request.args.get('months'))
         except:
             error_message["message"] = f"Invalid month input: {''.join(request.args.get('months'))}"
-            error_message["status"] = 400
             return jsonify(error_message), 400
 
     #if no input parameters set then return all country update iso3166_updates
@@ -145,9 +136,7 @@ def api():
         """
         #return error if 3 letter alpha-3 code not found
         if not (alpha3_code in list(iso3166.countries_by_alpha3.keys())):
-            error_message["message"] = f"Invalid 3 letter alpha-3 code input: {''.join(alpha3_code)}"
-            error_message["status"] = 400
-            return jsonify(error_message), 400
+            return None
         else:
             #use iso3166 package to find corresponding alpha-2 code from its alpha-3
             return iso3166.countries_by_alpha3[alpha3_code].alpha2
@@ -160,20 +149,29 @@ def api():
             for code in range(0, len(alpha2_code)):
                 #api can accept 3 letter alpha-3 code for country, this has to be converted into its alpha-2 counterpart
                 if (len(alpha2_code[code]) == 3):
-                    alpha2_code[code] = convert_to_alpha2(alpha2_code[code])
+                    temp_code = convert_to_alpha2(alpha2_code[code])
+                    #return error message if invalid alpha-3 code input
+                    if (temp_code is None):
+                        error_message["message"] = f"Invalid 3 letter alpha-3 code input: {''.join(alpha2_code[code])}"
+                        return jsonify(error_message), 400
+                    alpha2_code[code] = temp_code
                 #use regex to validate format of alpha-2 codes
                 if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[code]))) or (alpha2_code[code] not in list(iso3166.countries_by_alpha2.keys())):
                     alpha2_code.remove(alpha2_code[code])
         else:
             #api can accept 3 letter alpha-3 code for country, this has to be converted into its alpha-2 counterpart
             if (len(alpha2_code[0]) == 3):
-                alpha2_code[0] = convert_to_alpha2(alpha2_code[0])
+                temp_code = convert_to_alpha2(alpha2_code[0])
+                #return error message if invalid alpha-3 code input
+                if (temp_code is None):
+                    error_message["message"] = f"Invalid 3 letter alpha-3 code input: {''.join(alpha2_code[0])}"
+                    return jsonify(error_message), 400
+                alpha2_code[0] = temp_code
             #if single alpha-2 code passed in, validate its correctness
             if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[0]))) or \
                 (alpha2_code[0] not in list(iso3166.countries_by_alpha2.keys()) and \
                 alpha2_code[0] not in list(iso3166.countries_by_alpha3.keys())):
                 error_message["message"] = f"Invalid 2 letter alpha-2 code input: {''.join(alpha2_code)}"
-                error_message["status"] = 400
                 return jsonify(error_message), 400
 
     #a '-' seperating 2 years implies a year range of sought country updates, validate format of years in range
@@ -214,7 +212,6 @@ def api():
         #validate each year format using regex
         if not (bool(re.match(r"^1[0-9][0-9][0-9]$|^2[0-9][0-9][0-9]$", year_))):
             error_message["message"] = f"Invalid year input: {''.join(year)}"
-            error_message["status"] = 400
             return jsonify(error_message), 400
 
     #get updates from iso3166_updates object per country using alpha-2 code
@@ -277,7 +274,6 @@ def api():
         #return error if invalid month value input
         if not (str(months).isdigit()):
             error_message["message"] = f"Invalid month input: {''.join(months)}"
-            error_message["status"] = 400
             return jsonify(error_message), 400
         for code in input_alpha2_codes:
             temp_iso3166_updates[code] = [] 
