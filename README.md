@@ -1,7 +1,7 @@
-# iso3166-updates-frontend
+# iso3166-updates-api
 
 ![Vercel](https://vercelbadge.vercel.app/api/amckenna41/iso3166-updates-frontend)
-[![License: MIT](https://img.shields.io/github/license/amckenna41/iso3166-updates-frontend)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/github/license/amckenna41/iso3166-updates-api)](https://opensource.org/licenses/MIT)
 [![Issues](https://img.shields.io/github/issues/amckenna41/iso3166-updates)](https://github.com/amckenna41/iso3166-updates/issues)
 
 <div alt="images" style="justify-content: center; display:flex; margin-left=50px;">
@@ -99,4 +99,4 @@ Support
 [requests]: https://requests.readthedocs.io/
 [iso3166]: https://github.com/deactivated/python-iso3166
 [python-dateutil]: https://pypi.org/project/python-dateutil/
-[Issues]: https://github.com/amckenna41/iso3166-updates-frontend/issues
+[Issues]: https://github.com/amckenna41/iso3166-updates-api/issues

@@ -8,3 +8,5 @@
 - [X] Figure out how to upload secrets.json to vercel, pass in SA json into env var.
 - [X] Passing in alpha-3 code should still return data, convert to alpha-2 code in the code.
 - [ ] https://iso3166-updates.com/api?alpha2=ADA - breaks.
+- [X] Rename iso3166-updates-frontend to iso3166-api.
+- [X] Remove request.args or request_json from api, probably only need one.

@@ -1,7 +1,6 @@
 from flask import Flask, request, render_template, jsonify
-from google.cloud import storage
+from google.cloud import storage, exceptions
 from google.oauth2 import service_account
-from googleapiclient import discovery
 import requests
 import json 
 import iso3166
@@ -112,7 +111,7 @@ def api():
         try:
             months = int(request.args.get('months'))
         except:
-            error_message["message"] = f"Invalid month input: {''.join(request.args.get('months'))}"
+            error_message["message"] = f"Invalid month input: {''.join(request.args.get('months'))}."
             return jsonify(error_message), 400
 
     #if no input parameters set then return all country update iso3166_updates
@@ -152,7 +151,7 @@ def api():
                     temp_code = convert_to_alpha2(alpha2_code[code])
                     #return error message if invalid alpha-3 code input
                     if (temp_code is None):
-                        error_message["message"] = f"Invalid 3 letter alpha-3 code input: {''.join(alpha2_code[code])}"
+                        error_message["message"] = f"Invalid 3 letter alpha-3 code input: {''.join(alpha2_code[code])}."
                         return jsonify(error_message), 400
                     alpha2_code[code] = temp_code
                 #use regex to validate format of alpha-2 codes
@@ -164,14 +163,14 @@ def api():
                 temp_code = convert_to_alpha2(alpha2_code[0])
                 #return error message if invalid alpha-3 code input
                 if (temp_code is None):
-                    error_message["message"] = f"Invalid 3 letter alpha-3 code input: {''.join(alpha2_code[0])}"
+                    error_message["message"] = f"Invalid 3 letter alpha-3 code input: {''.join(alpha2_code[0])}."
                     return jsonify(error_message), 400
                 alpha2_code[0] = temp_code
             #if single alpha-2 code passed in, validate its correctness
             if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[0]))) or \
                 (alpha2_code[0] not in list(iso3166.countries_by_alpha2.keys()) and \
                 alpha2_code[0] not in list(iso3166.countries_by_alpha3.keys())):
-                error_message["message"] = f"Invalid 2 letter alpha-2 code input: {''.join(alpha2_code)}"
+                error_message["message"] = f"Invalid 2 letter alpha-2 code input: {''.join(alpha2_code)}."
                 return jsonify(error_message), 400
 
     #a '-' seperating 2 years implies a year range of sought country updates, validate format of years in range
@@ -209,9 +208,9 @@ def api():
         #skip to next iteration if < or > symbol
         if (year_ == '<' or year_ == '>'):
             continue
-        #validate each year format using regex
+        #validate each year format using regex, raise error if invalid year input
         if not (bool(re.match(r"^1[0-9][0-9][0-9]$|^2[0-9][0-9][0-9]$", year_))):
-            error_message["message"] = f"Invalid year input: {''.join(year)}"
+            error_message["message"] = f"Invalid year input: {''.join(year)}."
             return jsonify(error_message), 400
 
     #get updates from iso3166_updates object per country using alpha-2 code
@@ -273,7 +272,7 @@ def api():
     elif (months != []):
         #return error if invalid month value input
         if not (str(months).isdigit()):
-            error_message["message"] = f"Invalid month input: {''.join(months)}"
+            error_message["message"] = f"Invalid month input: {''.join(months)}."
             return jsonify(error_message), 400
         for code in input_alpha2_codes:
             temp_iso3166_updates[code] = [] 
