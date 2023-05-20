@@ -50,6 +50,7 @@ Get updates for a specific country e.g France, Germany, Hondurus
 `GET /alpha2/FR`
 
     curl -i https://iso3166-updates.com?alpha2=FR
+    curl -i https://iso3166-updates.com/alpha2/FR
 
 ### Response
     HTTP/2 200 
@@ -64,6 +65,7 @@ Get updates for a specific country e.g France, Germany, Hondurus
 `GET /alpha2/DE`
 
     curl -i https://iso3166-updates.com?alpha2=DE
+    curl -i https://iso3166-updates.com/alpha2/DE
 
 ### Response
     HTTP/2 200 
@@ -78,6 +80,7 @@ Get updates for a specific country e.g France, Germany, Hondurus
 `GET /alpha2/HN`
 
     curl -i https://iso3166-updates.com?alpha2=HN
+    curl -i https://iso3166-updates.com/alpha2/HN
 
 ### Response
     HTTP/2 200 
@@ -122,6 +125,7 @@ Get all updates for a specified year e.g 2004, 2007
 `GET /year/2004`
 
     curl -i https://iso3166-updates.com?year=2004
+    curl -i https://iso3166-updates.com/year/2004
 
 ### Response
     HTTP/2 200 
@@ -136,6 +140,7 @@ Get all updates for a specified year e.g 2004, 2007
 `GET /year/2007`
 
     curl -i https://iso3166-updates.com?year=2007
+    curl -i https://iso3166-updates.com/year/2007
 
 ### Response
     HTTP/2 200 
@@ -179,6 +184,7 @@ Get updates for a specific country for specified year e.g Andorra, Dominica for 
 `GET /alpha2/AD/year/2007`
 
     curl -i https://iso3166-updates.com?alpha2=AD&year=2007
+    curl -i https://iso3166-updates.com/alpha2/AD/year/2007
 
 ### Response
     HTTP/2 200 
@@ -193,6 +199,7 @@ Get updates for a specific country for specified year e.g Andorra, Dominica for 
 `GET /alpha2/DM/year/2007`
 
     curl -i https://iso3166-updates.com?alpha2=DM&year=2007
+    curl -i https://iso3166-updates.com/alpha2/DM/year/2007
 
 ### Response
     HTTP/2 200 
@@ -237,6 +244,7 @@ Get updates for a specific country for specified year range e.g Bosnia, Haiti fo
 `GET /alpha2/BA/year/2009-2015`
 
     curl -i https://iso3166-updates.com?alpha2=BA&year=2009-2015
+    curl -i https://iso3166-updates.com/alpha2/BA/year/2009-2015
 
 ### Response
     HTTP/2 200 
@@ -251,6 +259,7 @@ Get updates for a specific country for specified year range e.g Bosnia, Haiti fo
 `GET /alpha2/HT/year/2009-2015`
 
     curl -i https://iso3166-updates.com?alpha2=HT&year=2009-2015
+    curl -i https://iso3166-updates.com/alpha2/HT/year/2009-2015
 
 ### Response
     HTTP/2 200 
@@ -295,6 +304,7 @@ Get updates for a specific country less than/greater than specified year e.g Isr
 `GET /alpha2/IL/year/<2010`
 
     curl -i https://iso3166-updates.com?alpha2=IL&year=<2010
+    curl -i https://iso3166-updates.com/alpha2/IL/year/<2010
 
 ### Response
     HTTP/2 200 
@@ -309,6 +319,7 @@ Get updates for a specific country less than/greater than specified year e.g Isr
 `GET /alpha2/LT/year/<2012`
 
     curl -i https://iso3166-updates.com?alpha2=LT&year=>2012
+    curl -i https://iso3166-updates.com/alpha2/LT/year/>2012
 
 ### Response
     HTTP/2 200 
