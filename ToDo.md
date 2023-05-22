@@ -13,3 +13,4 @@
 - [X] Error for > amd < symbols in url: https://iso3166-updates-frontend-amckenna41.vercel.app/api/year/%3E2012 . Need to decode ['%3E2012'] to > 2012. Implement for all paths not just /year.
 - [X] https://iso3166-updates-frontend-amckenna41.vercel.app/api/alpha2/AD/year - if no year passed in after year path then return all updates for AD. 
 - [X] For status_code return parameter in functions, mention two status codes 200 - 400.
+- [ ] If not blob.exists() return error.

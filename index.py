@@ -26,8 +26,9 @@ USER_AGENT_HEADER = {'User-Agent': 'iso3166-updates/{} ({}; {})'.format(__versio
 #get Cloud Storage specific env vars
 sa_json_str = os.environ["SA_JSON"]
 project_id = os.environ["PROJECT_ID"]
-bucket_name = os.environ["BUCKET"]
-blob_name = os.environ["BLOB"]
+bucket_name = os.environ["BUCKET_NAME"]
+blob_name = os.environ["BLOB_NAME"]
+blob_path = "gs://" + bucket_name + "/" + blob_name
 
 ##### Import ISO3166 updates JSON from GCP Storage bucket #####
 #convert str of service account from env var into json 
@@ -38,8 +39,6 @@ credentials = service_account.Credentials.from_service_account_info(sa_json)
 storage_client = storage.Client(project=project_id, credentials=credentials)
 #initialise bucket object
 bucket = storage_client.bucket(bucket_name)
-#get path to json blob in bucket
-blob_path = "gs://" + bucket_name + "/" + blob_name
 #load json from blob on bucket
 all_iso3166_updates = json.loads(storage.Blob.from_string(blob_path, client=storage_client).download_as_text())
 
@@ -959,9 +958,15 @@ def not_found(e):
     :render_template : html
       Flask html template for error.html page.
     """
-    if request.path.endswith("/") and request.path[:-1] in all_endpoints:
+    error_message = ""
+    if (request.path.endswith("/") and request.path[:-1] in all_endpoints):
         return redirect(request.path[:-1]), 302
-    return render_template("404.html"), 404
+    if not ("api" in request.path):
+        error_message = "Path " + request.path + " should have the /api path prefix in it." 
+    else:
+        error_message = "ISO 3166 Updates: Page not found: " + request.path
+
+    return render_template("404.html", path=error_message), 404
 
 if __name__ == '__main__':
     #run flask app

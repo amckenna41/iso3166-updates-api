@@ -1,6 +1,7 @@
 # iso3166-updates-api
 
-![Vercel](https://vercelbadge.vercel.app/api/amckenna41/iso3166-updates-frontend)
+<!-- ![Vercel](https://vercelbadge.vercel.app/api/amckenna41/iso3166-updates-frontend) -->
+![Vercel](https://therealsujitk-vercel-badge.vercel.app/?app=iso3166-updates-frontend)
 [![iso3166_updates](https://img.shields.io/pypi/v/iso3166-updates)](https://pypi.org/project/iso3166-updates)
 [![License: MIT](https://img.shields.io/github/license/amckenna41/iso3166-updates)](https://opensource.org/licenses/MIT)
 [![Issues](https://img.shields.io/github/issues/amckenna41/iso3166-updates-api)](https://github.com/amckenna41/iso3166-updates-api/issues)
@@ -54,11 +55,11 @@ The paths available in the API are below:
 * https://www.iso3166-updates.com/api/alpha2/{alpha2}/year/{year}
 * https://www.iso3166-updates.com/api/months
 
-Three query string parameters are available in the API - `alpha2`, `year` and `months`. The 2 letter alpha-2 country code can be appeneded to the url as a query string parameter - "?alpha2=JP". A single alpha-2 or list of them can be passed to the API (e.g "FR", "DE", "HU, ID, MA"). The year parameter can be a specific year, year range, or a cut-off year to get updates less than/more than a year (e.g "?year=2017", "2010-2015", "<2009", ">2002"). Finally, the months parameter will gather all updates for 1 or more alpha-2 codes from a number of months from the present day (e.g "?months=6", "?months=48").
+Three query string parameters are available in the API - `alpha2`, `year` and `months`. The 2 letter alpha-2 country code can be appeneded to the url as a query string parameter - "/alpha2/JP". A single alpha-2 or list of them can be passed to the API (e.g "FR", "DE", "HU, ID, MA"). The year parameter can be a specific year, year range, or a cut-off year to get updates less than/more than a year (e.g "/year/2017", "2010-2015", "<2009", ">2002"). Finally, the months parameter will gather all updates for 1 or more alpha-2 codes from a number of months from the present day (e.g "/months/6", "/months/48").
 
 The API was hosted and built using GCP, with a Cloud Function being used in the backend which is fronted by an api gateway and load balancer. The function calls a GCP Storage bucket to access the back-end JSON with all ISO 3166 updates. A complete diagram of the architecture is shown below. Although, due to the cost of infrastructure the hosting was switched to Vercel (https://vercel.com/).
 
-The API documentation and usage with all useful commands and examples to the API is available on the [API.md](https://github.com/amckenna41/iso3166-updates/blob/main/iso3166-updates-api/API.md) file.
+The API documentation and usage with all useful commands and examples to the API is available on the [API.md](https://github.com/amckenna41/iso3166-updates-api/API.md) file.
 
 Staying up to date
 ------------------
