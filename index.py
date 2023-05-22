@@ -39,8 +39,21 @@ credentials = service_account.Credentials.from_service_account_info(sa_json)
 storage_client = storage.Client(project=project_id, credentials=credentials)
 #initialise bucket object
 bucket = storage_client.bucket(bucket_name)
-#load json from blob on bucket
-all_iso3166_updates = json.loads(storage.Blob.from_string(blob_path, client=storage_client).download_as_text())
+#get blob from bucket
+blob = bucket.blob(os.environ["BLOB_NAME"])      
+#bool to track if blob exists
+blob_exists = True
+#return error if object not found in bucket
+if (blob.exists()):    
+    #load json from blob on bucket
+    all_iso3166_updates = json.loads(storage.Blob.from_string(blob_path, client=storage_client).download_as_text())
+else:
+    blob_exists = False
+
+#error message returned if issue retrieving updates json
+blob_not_found_error_message = {}
+blob_not_found_error_message["status_code"] = 400
+blob_not_found_error_message["message"] = "Error finding updates object in GCP Storage Bucket."
 
 @app.route('/')
 def home():
@@ -56,7 +69,12 @@ def home():
     -------
     :render_template : html
       Flask html template for index.html page.
+    :blob_not_found_error_message : dict 
+        error message if issue finding updates object json.
     """
+    #return error if blob not found in bucket 
+    if not (blob_exists):
+        return blob_not_found_error_message
     return render_template('index.html', string=all_iso3166_updates)
 
 @app.route('/api', methods=['GET'])
@@ -78,6 +96,8 @@ def api():
     -------
     :iso3166_updates : json
       jsonified response of iso3166 updates.
+    :blob_not_found_error_message : dict 
+        error message if issue finding updates object json.
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input. 
@@ -90,6 +110,10 @@ def api():
     less_than = False
     year = []
     months = []
+
+    #return error if blob not found in bucket 
+    if not (blob_exists):
+        return blob_not_found_error_message
 
     #json object storing the error message and status code 
     error_message = {}
@@ -321,10 +345,15 @@ def api_alpha2_():
     -------
     :all_iso3166_updates : json
       jsonified response of all iso3166 updates.
+    :blob_not_found_error_message : dict 
+        error message if issue finding updates object json.   
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
     """
+    #return error if blob not found in bucket 
+    if not (blob_exists):
+        return blob_not_found_error_message
     return all_iso3166_updates, 200
 
 @app.route('/api/alpha2/<input_alpha2>', methods=['GET'])
@@ -351,6 +380,8 @@ def api_alpha2(input_alpha2):
     -------
     :iso3166_updates : json
       jsonified response of iso3166 updates per input alpha-2 code.
+    :blob_not_found_error_message : dict 
+        error message if issue finding updates object json.  
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
@@ -358,6 +389,10 @@ def api_alpha2(input_alpha2):
     #initialise vars
     iso3166_updates = {}
     alpha2_code = []
+
+    #return error if blob not found in bucket 
+    if not (blob_exists):
+        return blob_not_found_error_message
 
     #json object storing the error message and status code 
     error_message = {}
@@ -468,10 +503,15 @@ def api_year_():
     -------
     :all_iso3166_updates : json
       jsonified response of all iso3166 updates for all years.
+    :blob_not_found_error_message : dict 
+        error message if issue finding updates object json.    
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
     """
+    #return error if blob not found in bucket 
+    if not (blob_exists):
+        return blob_not_found_error_message
     return all_iso3166_updates, 200
 
 @app.route('/api/year/<input_year>', methods=['GET'])
@@ -493,6 +533,8 @@ def api_year(input_year):
     -------
     :iso3166_updates : json
       jsonified response of iso3166 updates per input year/years.
+    :blob_not_found_error_message : dict 
+        error message if issue finding updates object json.  
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
@@ -503,6 +545,10 @@ def api_year(input_year):
     greater_than = False
     less_than = False
     year = []
+
+    #return error if blob not found in bucket 
+    if not (blob_exists):
+        return blob_not_found_error_message
 
     #json object storing the error message and status code 
     error_message = {}
@@ -637,6 +683,8 @@ def api_alpha2_year(input_alpha2, input_year):
     -------
     :iso3166_updates : json
       jsonified response of iso3166 updates per input alpha-2 code and year.
+    :blob_not_found_error_message : dict 
+        error message if issue finding updates object json.    
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
@@ -648,6 +696,10 @@ def api_alpha2_year(input_alpha2, input_year):
     greater_than = False
     less_than = False
     year = []
+
+    #return error if blob not found in bucket 
+    if not (blob_exists):
+        return blob_not_found_error_message
 
     #json object storing the error message and status code 
     error_message = {}
@@ -845,16 +897,21 @@ def api_month_():
 
     Returns 
     -------
-    :error_message : json
+    :invald_month_error_message : json
       jsonified error message.
+    :blob_not_found_error_message : dict 
+        error message if issue finding updates object json.     
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
     """
-    error_message = {}
-    error_message["status"] = 400
-    error_message["message"] = f"No month value input."
-    return jsonify(error_message), 400
+    #return error if blob not found in bucket 
+    if not (blob_exists):
+        return blob_not_found_error_message
+    invald_month_error_message = {}
+    invald_month_error_message["status"] = 400
+    invald_month_error_message["message"] = f"No month value input."
+    return jsonify(invald_month_error_message), 400
 
 @app.route('/api/months/<input_month>', methods=['GET'])
 @app.route('/api/months/<input_month>/', methods=['GET'])
@@ -875,6 +932,8 @@ def api_month(input_month):
     -------
     :iso3166_updates : json
       jsonified response of iso3166 updates per input month.
+    :blob_not_found_error_message : dict 
+        error message if issue finding updates object json.     
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
@@ -882,6 +941,10 @@ def api_month(input_month):
     #initialise vars
     months = []
 
+    #return error if blob not found in bucket 
+    if not (blob_exists):
+        return blob_not_found_error_message
+        
     #json object storing the error message and status code 
     error_message = {}
     error_message["status"] = 400
