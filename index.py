@@ -166,11 +166,11 @@ def api():
         return redirect(url_for('api_alpha2_year', input_alpha2=alpha2_code, input_year=year))
 
     #redirect to api_month route if month query string parameter set 
-    if (alpha2_code == [] and year == [] and months != []):
+    if (alpha2_code == [] and year == [] and months != ""):
         return redirect(url_for('api_month', input_month=months))
 
     #if no input parameters set then return all ISO3166 updates for all countries
-    if (year == [] and alpha2_code == [] and months == []):
+    if (year == [] and alpha2_code == [] and months == ""):
         return jsonify(all_iso3166_updates), 200
     
 @app.route('/api/alpha2', methods=['GET'])
