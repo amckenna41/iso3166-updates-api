@@ -14,3 +14,8 @@
 - [X] https://iso3166-updates-frontend-amckenna41.vercel.app/api/alpha2/AD/year - if no year passed in after year path then return all updates for AD. 
 - [X] For status_code return parameter in functions, mention two status codes 200 - 400.
 - [X] If not blob.exists() return error message.
+- [X] Update endpoint function parameter comments.
+- [X] Check which route https://iso3166-updates.com/?year=2002-2010 this applies to, should throw error that /api needs to be prepended. https://iso3166-updates.com/api?year=2002-2010 should work.
+- [X] If query string params appended to /api path then redirect to respective url.
+- [X] Move error_message outside of individiual functions.
+- [X] Append url to error message.

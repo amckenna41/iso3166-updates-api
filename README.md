@@ -76,6 +76,9 @@ Requirements
 * [requests][requests] >= 2.28.1
 * [iso3166][iso3166] >= 2.1.1
 * [python-dateutil][python-dateutil] >= 2.8.2
+* [google-auth][google-auth] >= 2.17.3
+* [google-cloud-storage][google-cloud-storage] >= 2.8.0
+* [google-api-python-client][google-api-python-client] >= 2.86.0
 
 Issues
 ------
@@ -106,5 +109,8 @@ Support
 [requests]: https://requests.readthedocs.io/
 [iso3166]: https://github.com/deactivated/python-iso3166
 [python-dateutil]: https://pypi.org/project/python-dateutil/
+[google-auth]: https://cloud.google.com/python/docs/reference
+[google-cloud-storage]: https://cloud.google.com/python/docs/reference
+[google-api-python-client]: https://cloud.google.com/python/docs/reference
 [Issues]: https://github.com/amckenna41/iso3166-updates-api/issues
 [vercel]: https://vercel.com/
