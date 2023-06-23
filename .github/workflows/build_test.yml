@@ -34,11 +34,10 @@ jobs:
     - name: Artifacts mkdir
       run: mkdir artifacts
 
-    # install all required modules and dependancies using pip and setup.py installation
+    # install all required modules and dependancies using pip and requirements.txt installation
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python3 -m pip install setuptools wheel twine
         pip install flake8 pytest
         pip3 install pytest
         pip3 install pytest-cov
@@ -46,7 +45,6 @@ jobs:
         pip3 install safety
         pip install codecov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python3 setup.py install    
 
     #package vulnerability check
     - name: Package safety check
