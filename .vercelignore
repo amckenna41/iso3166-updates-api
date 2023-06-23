@@ -2,3 +2,5 @@
 LICENSE
 ToDo.md
 /venv
+/tests
+/.github
