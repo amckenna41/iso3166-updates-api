@@ -1,7 +1,6 @@
 from flask import Flask, request, render_template, jsonify, redirect, url_for
 from google.cloud import storage
 from google.oauth2 import service_account
-import requests
 import json 
 import iso3166
 import re
@@ -82,6 +81,7 @@ def home():
     if not (blob_exists):
         return jsonify(blob_not_found_error_message), 400
     
+    #raise error if /api not prepended to url path before parameters
     if ('year' or 'alpha2') in list(request.args):
         error_message["message"] = "/api path must feature in URL endpoint."
         error_message['path'] = request.base_url
@@ -95,7 +95,7 @@ def api():
     """
     Main route for API (https://iso3166-updates.com/api) that can accept the alpha-2, 
     year and months paths and query string parameters and return the relevant 
-    ISO3166 updates. The API uses a pre-created json with all the latest updates 
+    ISO 3166 updates. The API uses a pre-created json with all the latest updates 
     stored in a GCP Cloud Storage bucket, the object is imported in after 
     authentication and used as the basis of the API. If query string parameters are
     appended to the path they will be redirected to their respective Flask route.
@@ -107,7 +107,7 @@ def api():
 
     Returns 
     -------
-    :iso3166_updates : json
+    :all_iso3166_updates : json
       jsonified response of iso3166 updates.
     :blob_not_found_error_message : dict 
         error message if issue finding updates object json.
@@ -119,11 +119,7 @@ def api():
         used is determined by input parameters. 
     """
     #initialise vars
-    iso3166_updates = {}
     alpha2_code = []
-    year_range = False
-    greater_than = False
-    less_than = False
     year = []
     months = ""
 
@@ -131,13 +127,9 @@ def api():
     if not (blob_exists):
         return jsonify(blob_not_found_error_message), 400
 
-    #get current datetime object
-    current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
-
     #parse alpha-2 code parameter
     if not (request.args.get('alpha2') is None):
         alpha2_code = ','.join(sorted([request.args.get('alpha2').upper()]))
-        # alpha2_code = ','.join(alpha2_code)
     
     #parse year parameter
     if not (request.args.get('year') is None):
@@ -152,7 +144,7 @@ def api():
             error_message['path'] = request.base_url
             return jsonify(error_message), 400
 
-    #redirect to api_alpha2 route if alpha2 query string parameter set 
+    #redirect to api_alpha2 route if alpha-2 query string parameter set 
     if (alpha2_code != [] and year == []):
         return redirect(url_for('api_alpha2', input_alpha2=alpha2_code))
 
@@ -161,7 +153,7 @@ def api():
         (alpha2_code == [] and year != [] and months != [])):
         return redirect(url_for('api_year', input_year=year))
 
-    #redirect to api_alpha2_year route if alpha2 and year query string parameter set 
+    #redirect to api_alpha2_year route if alpha-2 and year query string parameter set 
     if (alpha2_code != [] and year != []):
         return redirect(url_for('api_alpha2_year', input_alpha2=alpha2_code, input_year=year))
 
@@ -177,7 +169,7 @@ def api():
 @app.route('/api/alpha2/', methods=['GET'])
 def api_alpha2_():
     """
-    If the alpha2 path appended to URL but no alpha-2 code 
+    If the alpha-2 path appended to URL but no alpha-2 code 
     proceeds it then return all listed ISO 3166 updates for 
     all countries. Route can accept the path with or 
     without the trailing slash.
@@ -203,21 +195,27 @@ def api_alpha2_():
 
 @app.route('/api/alpha2/<input_alpha2>', methods=['GET'])
 @app.route('/api/alpha2/<input_alpha2>/', methods=['GET'])
+@app.route('/api/alpha2/<input_alpha2>/year/', methods=['GET'])
+@app.route('/api/alpha2/<input_alpha2>/year', methods=['GET'])
 def api_alpha2(input_alpha2):
     """
     Flask route for alpha-2 path. Return all ISO 3166 updates
     for the inputted alpha-2 code/codes. If invalid alpha-2
-    code then return error. Additionally, if the alpha2 + year 
+    code then return error. Additionally, if the alpha-2 + year 
     path is appended to URL but no year proceeds the year 
     parameter but a valid alpha-2 code/codes are input then 
     return all listed ISO 3166 updates for countrys specified 
-    by the input alpha2 code/codes. Route can accept path with 
-    or without trailing slash.
+    by the input alpha-2 code/codes. The route can also accept
+    the corresponding 3 letter alpha-3 code for all of the 
+    alpha-2 codes. Route can accept path with or without trailing 
+    slash.
 
     Parameters
     ----------
     :input_alpha2 : string/list
         1 or more 2 letter alpha-2 country codes according to ISO 3166-1.
+        Can also accept the 3 letter alpha-3 code counterparts for each 
+        of the alpha-2 codes.
 
     Returns 
     -------
@@ -232,7 +230,7 @@ def api_alpha2(input_alpha2):
     #initialise vars
     iso3166_updates = {}
     alpha2_code = []
-
+    
     #return error if blob not found in bucket 
     if not (blob_exists):
         return jsonify(blob_not_found_error_message), 400
@@ -241,11 +239,11 @@ def api_alpha2(input_alpha2):
     if not (input_alpha2 is None and input_alpha2 != ""):
         alpha2_code = sorted([input_alpha2.upper()])
     
-    #if no input parameters set then return all country update iso3166_updates
+    #if no input parameters set then return all country updates (all_iso3166_updates)
     if (alpha2_code == []):
         return jsonify(all_iso3166_updates), 200
 
-    #validate multiple alpha-2 codes input, remove any invalid ones
+    #validate alpha-2 codes, remove any invalid ones, raise error if invalid alpha-3 codes input
     if (alpha2_code != []):
         if (',' in alpha2_code[0]):
             alpha2_code = alpha2_code[0].split(',')
@@ -282,22 +280,13 @@ def api_alpha2(input_alpha2):
                 return jsonify(error_message), 400
 
     #get updates from iso3166_updates object per country using alpha-2 code
+    #if no valid alpha-2 codes input, use all alpha-2 codes from iso3166 and all updates data
     if (alpha2_code == []):
         iso3166_updates = all_iso3166_updates
+        input_data = all_iso3166_updates
     else:
         for code in alpha2_code:
             iso3166_updates[code] = all_iso3166_updates[code]
-    
-    #temporary updates object
-    temp_iso3166_updates = {}
-
-    #if no valid alpha-2 codes input, use all alpha-2 codes from iso3166 and all updates data
-    if (alpha2_code == []):
-        input_alpha2_codes  = list(iso3166.countries_by_alpha2.keys())
-        input_data = all_iso3166_updates
-    #else set input alpha-2 codes to inputted and use corresponding updates data
-    else:
-        input_alpha2_codes = alpha2_code
         input_data = iso3166_updates
         
     #set main updates dict to temp one
@@ -323,7 +312,7 @@ def api_year_():
     :all_iso3166_updates : json
       jsonified response of all iso3166 updates for all years.
     :blob_not_found_error_message : dict 
-        error message if issue finding updates object json.    
+        error message if issue finding updates object json in storage bucket. 
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
@@ -335,6 +324,8 @@ def api_year_():
 
 @app.route('/api/year/<input_year>', methods=['GET'])
 @app.route('/api/year/<input_year>/', methods=['GET'])
+@app.route('/api/year/<input_year>/alpha2/', methods=['GET'])
+@app.route('/api/year/<input_year>/alpha2', methods=['GET'])
 def api_year(input_year):
     """
     Flask route for year path. Return all ISO 3166 updates
@@ -355,7 +346,7 @@ def api_year(input_year):
     :iso3166_updates : json
       jsonified response of iso3166 updates per input year/years.
     :blob_not_found_error_message : dict 
-        error message if issue finding updates object json.  
+        error message if issue finding updates object json in storage bucket.
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
@@ -375,7 +366,7 @@ def api_year(input_year):
     if not (input_year is None and input_year != ""):
         year = sorted([input_year])
 
-    #if no input parameters set then return all country update iso3166_updates
+    #if no input parameters set then return all country updates (all_iso3166_updates)
     if (year == []):
         return jsonify(all_iso3166_updates), 200
 
@@ -386,17 +377,21 @@ def api_year(input_year):
         elif ("%3C" in year[y]):
             year[y] = "<" + year[y][3:]
 
-    #a '-' seperating 2 years implies a year range of sought country updates, validate format of years in range
+    #a '-' seperating 2 years implies a year range of sought country updates
+    #a ',' seperating 2 year implies a list of years
+    #a '>' before year means get all country updates greater than or equal to specified year
+    #a '<' before year means get all country updates less than specified year
+    #validate format of year input parameter 
     if (year != []):
         if ('-' in year[0]):
             year_range = True
             year = year[0].split('-')
-            #only 2 years should be included in input parameter
+            #only 2 years should be included in input parameter when using a year range
             if (len(year) > 2):
                 year = []
                 year_range = False
         elif (',' in year[0]):
-            #split years into multiple years, if multiple are input
+            #split years into multiple years, if multiple are input, seperated by comma
             year = year[0].split(',')
         #parse array for using greater than symbol
         elif ('>' in year[0]):
@@ -430,19 +425,14 @@ def api_year(input_year):
     
     #temporary updates object
     temp_iso3166_updates = {}
-
-    #if no valid alpha-2 codes input, use all alpha-2 codes from iso3166 and all updates data
+    
+    #use temp object to get updates data either for specific country/alpha-2 codes or for all countries
     if (year != []):
+        
+        #if no valid alpha-2 codes input, use all alpha-2 codes from iso3166 and all updates data (all_iso3166_updates)
         input_alpha2_codes  = list(iso3166.countries_by_alpha2.keys())
         input_data = all_iso3166_updates
-    #else set input alpha-2 codes to inputted and use corresponding updates data
-    else:
-        input_alpha2_codes = alpha2_code
-        input_data = iso3166_updates
-    
-    #use temp object to get updates data either for specific country/alpha-2 codes or for all
-    #countries, dependant on input_alpha2_codes and input_data vars above
-    if (year != []):
+
         for code in input_alpha2_codes:
             temp_iso3166_updates[code] = []
             for update in range(0, len(input_data[code])):
@@ -471,31 +461,36 @@ def api_year(input_year):
                         if (temp_year != "" and (temp_year == year_)):
                             temp_iso3166_updates[code].append(input_data[code][update])
             
-            #if current alpha-2 has no rows for selected year/year range, remove from temp object
+            #if current alpha-2 code has no rows for selected year/year range, remove from temp object
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
     else:
-        temp_iso3166_updates = input_data #return updates data when Years and Month params are empty
+        temp_iso3166_updates = all_iso3166_updates #return updates data when Years params is empty
     
     #set main updates dict to temp one
     iso3166_updates = temp_iso3166_updates
 
     return jsonify(iso3166_updates), 200
 
+@app.route('/api/year/<input_year>/alpha2/<input_alpha2>', methods=['GET'])
+@app.route('/api/year/<input_year>/alpha2/<input_alpha2>/', methods=['GET'])
 @app.route('/api/alpha2/<input_alpha2>/year/<input_year>', methods=['GET'])
 @app.route('/api/alpha2/<input_alpha2>/year/<input_year>/', methods=['GET'])
 def api_alpha2_year(input_alpha2, input_year):
     """
-    Flask route for alpha2 + year path. Return all ISO 3166 updates
+    Flask route for alpha-2 + year path. Return all ISO 3166 updates
     for the inputted alpha-2 code/codes + year/years/year range or 
-    greater than or less than input year. If invalid alpha2 code or 
-    year/years then return error. Route can accept the path with or 
-    without the trailing slash.
+    greater than or less than input year. If invalid alpha-2 code or 
+    year/years input then return error. The route can also accept the 
+    3 letter alpha-3 counterpart for each alpha-2 code. Route can accept 
+    the path with or without the trailing slash.
     
     Parameters
     ----------
     :input_alpha2 : string/list
         1 or more 2 letter alpha-2 country codes according to ISO 3166-1.
+        Can also accept the 3 letter alpha-3 counterpart for each alpha-2
+        code.
     :input_year : string/list
         year, list of years, or year range to get updates
         from. Can also accept greater than or less than symbol
@@ -506,7 +501,7 @@ def api_alpha2_year(input_alpha2, input_year):
     :iso3166_updates : json
       jsonified response of iso3166 updates per input alpha-2 code and year.
     :blob_not_found_error_message : dict 
-        error message if issue finding updates object json.    
+        error message if issue finding updates object json in storage bucket.
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
@@ -531,7 +526,7 @@ def api_alpha2_year(input_alpha2, input_year):
     if not (input_year is None and input_year != ""):
         year = sorted([input_year])
 
-    #if no input parameters set then return all country update iso3166_updates
+    #if no input parameters set then return all country updates (all_iso3166_updates)
     if (year == [] and alpha2_code == []):
         return jsonify(all_iso3166_updates), 200
 
@@ -542,7 +537,7 @@ def api_alpha2_year(input_alpha2, input_year):
         elif ("%3C" in year[y]):
             year[y] = "<" + year[y][3:]
 
-    #validate multiple alpha-2 codes input, remove any invalid ones
+    #validate all alpha-2 codes input, remove any invalid ones, raise error if invalid alpha-3 codes
     if (alpha2_code != []):
         if (',' in alpha2_code[0]):
             alpha2_code = alpha2_code[0].split(',')
@@ -578,17 +573,21 @@ def api_alpha2_year(input_alpha2, input_year):
                 error_message['path'] = request.base_url
                 return jsonify(error_message), 400
 
-    #a '-' seperating 2 years implies a year range of sought country updates, validate format of years in range
+    #a '-' seperating 2 years implies a year range of sought country updates
+    #a ',' seperating 2 year implies a list of years
+    #a '>' before year means get all country updates greater than or equal to specified year
+    #a '<' before year means get all country updates less than specified year
+    #validate format of year input parameter 
     if (year != []):
         if ('-' in year[0]):
             year_range = True
             year = year[0].split('-')
-            #only 2 years should be included in input parameter
+            #only 2 years should be included in input parameter when using a year range
             if (len(year) > 2):
                 year = []
                 year_range = False
         elif (',' in year[0]):
-            #split years into multiple years, if multiple are input
+            #split years into multiple years, if multiple are input seperated by comma
             year = year[0].split(',')
         #parse array for using greater than symbol
         elif ('>' in year[0]):
@@ -681,7 +680,7 @@ def api_alpha2_year(input_alpha2, input_year):
 
     return jsonify(iso3166_updates), 200
 
-@app.route('/api/months', methods=['GET'])
+@app.route('/api/months', methods=['GET']) 
 @app.route('/api/months/', methods=['GET'])
 def api_month_():
     """
@@ -699,7 +698,7 @@ def api_month_():
     :invald_month_error_message : json
       jsonified error message.
     :blob_not_found_error_message : dict 
-        error message if issue finding updates object json.     
+        error message if issue finding updates object json in storage bucket.
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
@@ -707,6 +706,8 @@ def api_month_():
     #return error if blob not found in bucket 
     if not (blob_exists):
         return jsonify(blob_not_found_error_message), 400
+    
+    #return error message if no month parameter value input
     invald_month_error_message = {}
     invald_month_error_message["status"] = 400
     invald_month_error_message["message"] = f"No month value input."
@@ -718,7 +719,7 @@ def api_month(input_month):
     """
     Flask route for month path. Return all ISO 3166 updates
     for the previous number of months specified by month
-    parameter. If invalid momnth input then return error. 
+    parameter. If invalid month input then return error. 
     Route can accept the path with or without the trailing 
     slash.
 
@@ -733,7 +734,7 @@ def api_month(input_month):
     :iso3166_updates : json
       jsonified response of iso3166 updates per input month.
     :blob_not_found_error_message : dict 
-        error message if issue finding updates object json.     
+        error message if issue finding updates object json in storage bucket.  
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
@@ -796,7 +797,7 @@ def api_month(input_month):
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
     else:
-        temp_iso3166_updates = input_data #return updates data when Years and Month params are empty
+        temp_iso3166_updates = input_data #return updates data when Years and Month params are emptya
     
     #set main updates dict to temp one
     iso3166_updates = temp_iso3166_updates
@@ -805,18 +806,18 @@ def api_month(input_month):
 
 def convert_to_alpha2(alpha3_code):
     """ 
-    Convert an ISO3166 country's 3 letter alpha-3 code into its 2 letter
+    Convert an ISO 3166 country's 3 letter alpha-3 code into its 2 letter
     alpha-2 counterpart. 
 
     Parameters 
     ----------
     :alpha3_code: str
-        3 letter ISO3166 country code.
+        3 letter ISO 3166 country code.
     
     Returns
     -------
     :iso3166.countries_by_alpha3[alpha3_code].alpha2: str
-        2 letter ISO3166 country code. 
+        2 letter ISO 3166 country code. 
     """
     #return error if 3 letter alpha-3 code not found
     if not (alpha3_code in list(iso3166.countries_by_alpha3.keys())):

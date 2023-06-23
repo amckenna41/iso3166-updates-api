@@ -13,7 +13,7 @@ Get All ISO 3166-2 updates for all countries
 ### Request
 `GET /`
 
-    curl -i https://iso3166-updates.com/api
+    curl -i https://www.iso3166-updates.com/api
 
 ### Response
     HTTP/2 200 
@@ -28,7 +28,7 @@ Get All ISO 3166-2 updates for all countries
 ```python
 import requests
 
-base_url = "https://iso3166-updates.com/api"
+base_url = "https://www.iso3166-updates.com/api"
 
 all_request = requests.get(base_url)
 all_request.json() 
@@ -37,7 +37,7 @@ all_request.json()
 ### Javascript
 ```javascript
 function getData() {
-  const response = await fetch('https://iso3166-updates.com/api')
+  const response = await fetch('https://www.iso3166-updates.com/api')
   const data = await response.json()
 }
 
@@ -97,7 +97,7 @@ Get updates for a specific country e.g France, Germany, Hondurus
 ```python
 import requests
 
-base_url = "https://iso3166-updates.com/api"
+base_url = "https://iso3166-updates/api"
 
 all_request = requests.get(base_url, params={"alpha2": "FR"})
 # all_request = requests.get(base_url, params={"alpha2": "DE"})
@@ -109,7 +109,7 @@ all_request.json()
 ```javascript
 function getData() {
   const response = 
-    await fetch('https://iso3166-updates.com/api?' + 
+    await fetch('https://iso3166-updates/api' + 
         new URLSearchParams({
             alpha2: 'FR'
   }));
@@ -157,7 +157,7 @@ Get all updates for a specified year e.g 2004, 2007
 ```python
 import requests
 
-base_url = "https://iso3166-updates.com/api"
+base_url = "https://iso3166-updates/api"
 
 all_request = requests.get(base_url, params={"year": "2004"})
 # all_request = requests.get(base_url, params={"year": "2007"})
@@ -168,7 +168,7 @@ all_request.json()
 ```javascript
 function getData() {
   const response = 
-    await fetch('https://iso3166-updates.com/api?' + 
+    await fetch('https://iso3166-updates/api' + 
         new URLSearchParams({
             year: '2004'
   }));
@@ -227,7 +227,7 @@ all_request.json()
 ```javascript
 function getData() {
   const response = 
-    await fetch('https://iso3166-updates.com/api?' + 
+    await fetch('https://iso3166-updates.com/api' + 
         new URLSearchParams({
             alpha2: 'AD',
             year: '2007'
@@ -265,12 +265,12 @@ Get updates for a specific country for specified year range e.g Bosnia, Haiti fo
 
 ### Response
     HTTP/2 200 
-    Date: Thu, 24 Feb 2011 12:36:30 GMT
-    Connection: close
-    Content-Type: application/json
-    Content-Length: 35
+    content-type: application/json
+    date: Tue, 07 Jan 2023 17:19:23 GMT
+    server: Google Frontend
+    content-length: 476
 
-    {}
+    {"HT":[{"Code/Subdivision change":"",...}
 
 ### Python
 ```python
@@ -287,7 +287,7 @@ all_request.json()
 ```javascript
 function getData() {
   const response = 
-    await fetch('https://iso3166-updates.com/api?' + 
+    await fetch('https://iso3166-updates.com/api' + 
         new URLSearchParams({
             alpha2: 'BA',
             year: '2009-2015'
@@ -310,10 +310,10 @@ Get updates for a specific country less than/greater than specified year e.g Isr
 
 ### Response
     HTTP/2 200 
-    Date: Thu, 24 Feb 2011 12:36:30 GMT
-    Connection: close
-    Content-Type: application/json
-    Content-Length: 35
+    content-type: application/json
+    date: Tue, 05 Mar 2023 17:19:23 GMT
+    server: Google Frontend
+    content-length: 3
 
     {}
 
@@ -325,18 +325,18 @@ Get updates for a specific country less than/greater than specified year e.g Isr
 
 ### Response
     HTTP/2 200 
-    Date: Thu, 24 Feb 2011 12:39:30 GMT
-    Connection: close
-    Content-Type: application/json
-    Content-Length: 35
+    content-type: application/json
+    date: Tue, 07 Jan 2023 17:19:23 GMT
+    server: Google Frontend
+    content-length: 637
 
-    {}
+    {"LT":[{"Code/Subdivision change":...}
 
 ### Python
 ```python
 import requests
 
-base_url = "https://iso3166-updates.com/api"
+base_url = "https://iso3166-updates.com"
 
 all_request = requests.get(base_url, params={"alpha2": "IL", "year": "<2010"}) 
 # all_request = requests.get(base_url, params={"alpha2": "LT", "year": ">2012"}) 
@@ -347,10 +347,93 @@ all_request.json()
 ```javascript
 function getData() {
   const response = 
-    await fetch('https://iso3166-updates.com/api?' + 
+    await fetch('https://iso3166-updates.com' + 
         new URLSearchParams({
             alpha2: 'IL',
             year: '<2010'
+  }));
+  const data = await response.json()
+}
+
+// Begin accessing JSON data here
+var data = JSON.parse(this.response)
+```
+
+Get all updates for all countries from the past 3 or 6 months
+-------------------------------------------------------------
+
+### Request
+`GET /months/3`
+
+    curl -i https://iso3166-updates.com/api?months=3
+    curl -i https://iso3166-updates.com/api/months/3
+
+### Response
+    HTTP/2 200 
+    Date: Thu, 06 Apr 2023 12:36:30 GMT
+    Connection: close
+    Content-Type: application/json
+    Content-Length: 3
+
+    {}
+
+### Python
+```python
+import requests
+
+base_url = "https://iso3166-updates.com"
+
+all_request = requests.get(base_url, params={"months": "3"}) 
+all_request.json() 
+```
+
+### Javascript
+```javascript
+function getData() {
+  const response = 
+    await fetch('https://iso3166-updates.com' + 
+        new URLSearchParams({
+            months: 3
+  }));
+  const data = await response.json()
+}
+
+// Begin accessing JSON data here
+var data = JSON.parse(this.response)
+```
+
+### Request
+`GET /months/6`
+
+    curl -i https://iso3166-updates.com/api?months=6
+    curl -i https://iso3166-updates.com/api/months/6
+
+### Response
+    HTTP/2 200 
+    Date: Thu, 06 Apr 2023 14:36:30 GMT
+    Connection: close
+    Content-Type: application/json
+    Content-Length: 4818
+
+    {"DZ":[{"Code/Subdivision change":""...}
+
+### Python
+```python
+import requests
+
+base_url = "https://iso3166-updates.com"
+
+all_request = requests.get(base_url, params={"months": "6"}) 
+all_request.json() 
+```
+
+### Javascript
+```javascript
+function getData() {
+  const response = 
+    await fetch('https://iso3166-updates.com' + 
+        new URLSearchParams({
+            months: 6
   }));
   const data = await response.json()
 }
