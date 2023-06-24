@@ -1,5 +1,6 @@
 flask
 iso3166
+iso3166-updates
 python-dateutil
 requests
 google-auth
