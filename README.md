@@ -3,6 +3,7 @@
 <!-- ![Vercel](https://vercelbadge.vercel.app/api/amckenna41/iso3166-updates-frontend) -->
 ![Vercel](https://therealsujitk-vercel-badge.vercel.app/?app=iso3166-updates-frontend)
 [![iso3166_updates](https://img.shields.io/pypi/v/iso3166-updates)](https://pypi.org/project/iso3166-updates)
+[![pytest](https://github.com/amckenna41/iso3166-updates-api/workflows/Building%20and%20Testing/badge.svg)](https://github.com/amckenna41/iso3166-updates-api/actions?query=workflowBuilding%20and%20Testing)
 [![License: MIT](https://img.shields.io/github/license/amckenna41/iso3166-updates)](https://opensource.org/licenses/MIT)
 [![Issues](https://img.shields.io/github/issues/amckenna41/iso3166-updates-api)](https://github.com/amckenna41/iso3166-updates-api/issues)
 

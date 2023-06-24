@@ -5,21 +5,11 @@ import json
 import iso3166
 import re
 import os
-import logging
-import getpass
 from datetime import datetime
 from dateutil import relativedelta
 
 #initialise Flask app
 app = Flask(__name__)
-
-#initialise logging library 
-__version__ = "1.2.2"
-log = logging.getLogger(__name__)
-
-#initalise User-agent header for requests library 
-USER_AGENT_HEADER = {'User-Agent': 'iso3166-updates/{} ({}; {})'.format(__version__,
-                                       'https://github.com/amckenna41/iso3166-updates', getpass.getuser())}
 
 #get Cloud Storage specific env vars
 sa_json_str = os.environ["SA_JSON"]
@@ -846,9 +836,9 @@ def not_found(e):
     """
     error_message_ = ""
     if not ("api" in request.path):
-        error_message_ = "Path " + request.path + " should have the /api path prefix in it." 
+        error_message_ = "Path " + request.path + f" should have the /api path prefix in it:\n{e}" 
     else:
-        error_message_ = "ISO 3166 Updates: Page not found: " + request.path
+        error_message_ = "ISO 3166 Updates: Page not found: " + request.path + "\n{e}"
 
     return render_template("404.html", path=error_message_), 404
 
