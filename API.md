@@ -179,8 +179,8 @@ function getData() {
 var data = JSON.parse(this.response)
 ```
 
-Get updates for a specific country for specified year e.g Andorra, Dominica for 2007
-------------------------------------------------------------------------------------
+Get updates for a specific country for a specified year e.g Andorra, Dominica for 2007
+--------------------------------------------------------------------------------------
 
 ### Request
 `GET /alpha2/AD/year/2007`
@@ -239,8 +239,8 @@ function getData() {
 var data = JSON.parse(this.response)
 ```
 
-Get updates for a specific country for specified year range e.g Bosnia, Haiti for 2009-2015
--------------------------------------------------------------------------------------------
+Get updates for a specific country for a specified year range e.g Bosnia, Haiti for 2009-2015
+---------------------------------------------------------------------------------------------
 
 ### Request
 `GET /alpha2/BA/year/2009-2015`
@@ -299,8 +299,8 @@ function getData() {
 var data = JSON.parse(this.response)
 ```
 
-Get updates for a specific country less than/greater than specified year e.g Israel, Lithuania <2010 or >2012
--------------------------------------------------------------------------------------------------------------
+Get updates for a specific country less than/greater than a specified year e.g Israel, Lithuania <2010 or >2012
+---------------------------------------------------------------------------------------------------------------
 
 ### Request
 `GET /alpha2/IL/year/<2010`
