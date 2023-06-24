@@ -14,7 +14,7 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
         # self.base_url = "https://iso3166-updates-frontend.vercel.app/"
         self.base_url = "https://iso3166-updates.com/api" 
 
-        self.__version__ = metadata('iso3166_updates')['version']
+        self.__version__ = metadata('iso3166-updates')['version']
 
         self.alpha2_base_url = self.base_url + "/alpha2/"
         self.year_base_url = self.base_url + '/year/'
