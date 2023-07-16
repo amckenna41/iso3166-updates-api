@@ -2,11 +2,37 @@
 
 ![Vercel](https://therealsujitk-vercel-badge.vercel.app/?app=iso3166-updates-frontend)
 
-As well as the Python software package, an API is also available to access any updates to a country's ISO 3166-2 codes via a URL endpoint. You can search for a particular country using its 2 letter alpha-2 code or 3 letter alpha-3 code (e.g EG, FR, DE or EGY, FRA, DEU) via 'alpha2' query parameter appended to the API URL. Additionally, the 'year' query parameter allows you to search for updates to 1 or more countries for a selected year, multiple years or a year range (e.g 2008, 2000-2010, <2016). The 'month' query parameter accepts an integer representing the number of months of past updates to be returned (e.g 6, 9, 24) from the current date. If no query parameters are included then the whole dataset with all updates for all countries will be returned. 
+Four query string parameters are available in the API - `alpha2`, `name`, `year` and `months`. 
+
+* The 2 letter alpha-2 country code can be appended to the url as a query string parameter or as its own path ("?alpha2=JP" or /alpha2/JP). A single alpha-2 or list of them can be passed to the API (e.g "?alpha2="FR, DE, HU, ID, MA" or /alpha2/FR,DE,HU,ID,MA). The 3 letter alpha-3 counterpart for each country's alpha-2 code can also be passed into the `alpha2` parameter (e.g "?alpha2="FRA, DEU, HUN, IDN, MAR" or /alpha2/FRA,DEU,HUN,IDN,MAR). 
+
+* The name parameter takes in a country's name as it is commonly known in English (e.g France, Moldova, Benin). A closeness function is used to get the most approximate available country from the one the user input. If one not found then an error is raised.
+
+* The year parameter can be a specific year, year range, or a cut-off year to get updates less than/more than a year (e.g "/year/2017", "2010-2015", "<2009", ">2002"). 
+
+* Finally, the months parameter will gather all updates for 1 or more alpha-2 codes from a number of months from the present day (e.g "?months=2", "/months/6", "/months/48").
+
+* If no input parameter values specified then all ISO 3166-2 updates for all countries and years will be gotten.
+
+The API was hosted and built using GCP, with a Cloud Function being used in the backend which is fronted by an api gateway and load balancer. The function calls a GCP Storage bucket to access the back-end JSON where all ISO 3166 updates are stored. A complete diagram of the architecture is shown below. Although, due to the cost of infrastructure the hosting was switched to Vercel (https://vercel.com/).
+
+The API documentation and usage with all useful commands and examples to the API is available on the [README](https://github.com/amckenna41/iso3166-updates/blob/main/iso3166-updates-api/README.md). The full list of attributes available for each country are:
+
+* Edition/Newsletter: Name and or edition of newsletter that the ISO 3166-2 change/update was communicated in.
+* Date Issued: Date that the change was communicated.
+* Code/Subdivision change: Overall summary of change/update made.
+* Description of change in newsletter: More in-depth info about the change/update that was made.
 
 The main API endpoint is:
 
 > https://iso3166-updates.com/api
+
+The other endpoints available in the API are:
+* https://iso3166-updates.com/api/alpha2/<input_alpha2>
+* https://iso3166-updates.com/api/name/<input_name>
+* https://iso3166-updates.com/api/year/<year>
+* https://iso3166-updates.com/api/alpha2/<input_alpha2>/year/<year>
+* https://iso3166-updates.com/api/month/<month>
 
 Get All ISO 3166-2 updates for all countries
 -------------------------------------------
@@ -359,6 +385,80 @@ function getData() {
 var data = JSON.parse(this.response)
 ```
 
+Get all ISO 3166 updates data for a specific country, using country name, e.g. Tajikistan, Seychelles, Uganda
+-------------------------------------------------------------------------------------------------------------
+
+### Request
+`GET /name/Tajikistan`
+
+    curl -i https://iso3166-updates.com/api?name=Tajikistan
+    curl -i https://iso3166-updates.com/api/name/Tajikistan
+
+### Response
+    HTTP/2 200 
+    content-type: application/json
+    date: Tue, 20 Dec 2022 17:40:19 GMT
+    server: Google Frontend
+    content-length: 10
+
+    {"TJ":[{"Code/Subdivision change":...}
+
+### Request
+`GET /name/Seychelles`
+
+    curl -i https://iso3166-updates.com/api?name=Seychelles
+    curl -i https://iso3166-updates.com/api/name/Seychelles
+
+### Response
+    HTTP/2 200 
+    content-type: application/json
+    date: Tue, 20 Dec 2022 17:41:53 GMT
+    server: Google Frontend
+    content-length: 479
+
+    {"SC":[{"Code/Subdivision change":...}
+
+### Request
+`GET /name/Uganda`
+
+    curl -i https://iso3166-updates.com/api?name=Ugandda
+    curl -i https://iso3166-updates.com/api/name/Uganda
+
+### Response
+    HTTP/2 200 
+    content-type: application/json
+    date: Tue, 21 Dec 2022 19:43:19 GMT
+    server: Google Frontend
+    content-length: 10
+
+    {"UG":[{"Code/Subdivision change":...}
+
+### Python
+```python
+import requests
+
+base_url = "https://iso3166-updates.com/api/"
+
+all_request = requests.get(base_url, params={"name": "Tajikistan"})
+# all_request = requests.get(base_url, params={"name": "Seychelles"})
+# all_request = requests.get(base_url, params={"name": "Uganda"})
+all_request.json() 
+```
+
+### Javascript
+```javascript
+function getData() {
+  const response = 
+    await fetch('https://iso3166-updates.com/api?' + 
+        new URLSearchParams({
+            name: 'Tajikistan'
+  }));
+  const data = await response.json()
+}
+
+// Begin accessing JSON data here
+var data = JSON.parse(this.response)
+```
 Get all updates for all countries from the past 3 or 6 months
 -------------------------------------------------------------
 

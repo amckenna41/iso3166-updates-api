@@ -7,6 +7,7 @@ import re
 import os
 from datetime import datetime
 from dateutil import relativedelta
+from difflib import get_close_matches
 
 #initialise Flask app
 app = Flask(__name__)
@@ -81,10 +82,18 @@ def home():
 
 @app.route('/api', methods=['GET'])
 @app.route('/api/', methods=['GET'])
+@app.route('/api/alpha2', methods=['GET'])
+@app.route('/api/alpha2/', methods=['GET'])
+@app.route('/api/name/', methods=['GET'])
+@app.route('/api/name', methods=['GET'])
+@app.route('/api/year', methods=['GET'])
+@app.route('/api/year/', methods=['GET'])
+@app.route('/api/months', methods=['GET']) 
+@app.route('/api/months/', methods=['GET'])
 def api():
     """
     Main route for API (https://iso3166-updates.com/api) that can accept the alpha-2, 
-    year and months paths and query string parameters and return the relevant 
+    year, months and name paths and query string parameters and return the relevant 
     ISO 3166 updates. The API uses a pre-created json with all the latest updates 
     stored in a GCP Cloud Storage bucket, the object is imported in after 
     authentication and used as the basis of the API. If query string parameters are
@@ -112,6 +121,7 @@ def api():
     alpha2_code = []
     year = []
     months = ""
+    name = ""
 
     #return error if blob not found in bucket 
     if not (blob_exists):
@@ -134,12 +144,16 @@ def api():
             error_message['path'] = request.base_url
             return jsonify(error_message), 400
 
+    #parse name parameter
+    if not (request.args.get('name') is None):
+        name = request.args.get('name')
+
     #redirect to api_alpha2 route if alpha-2 query string parameter set 
     if (alpha2_code != [] and year == []):
         return redirect(url_for('api_alpha2', input_alpha2=alpha2_code))
 
     #redirect to api_year route if year query string parameter set 
-    if ((alpha2_code == [] and year != []) or \
+    if ((alpha2_code == [] and year != [] and name == "") or \
         (alpha2_code == [] and year != [] and months != [])):
         return redirect(url_for('api_year', input_year=year))
 
@@ -148,41 +162,19 @@ def api():
         return redirect(url_for('api_alpha2_year', input_alpha2=alpha2_code, input_year=year))
 
     #redirect to api_month route if month query string parameter set 
-    if (alpha2_code == [] and year == [] and months != ""):
+    if (alpha2_code == [] and year == [] and name == "" and months != ""):
         return redirect(url_for('api_month', input_month=months))
 
+    #redirect to api_name route if name query string parameter set 
+    if (name != "" and alpha2_code == []):
+        return redirect(url_for('api_name', input_month=months))
+
     #if no input parameters set then return all ISO3166 updates for all countries
-    if (year == [] and alpha2_code == [] and months == ""):
+    if (year == [] and alpha2_code == [] and months == "" and name == ""):
         return jsonify(all_iso3166_updates), 200
-    
-@app.route('/api/alpha2', methods=['GET'])
-@app.route('/api/alpha2/', methods=['GET'])
-def api_alpha2_():
-    """
-    If the alpha-2 path appended to URL but no alpha-2 code 
-    proceeds it then return all listed ISO 3166 updates for 
-    all countries. Route can accept the path with or 
-    without the trailing slash.
 
-    Parameters
-    ----------
-    None
-
-    Returns 
-    -------
-    :all_iso3166_updates : json
-      jsonified response of all iso3166 updates.
-    :blob_not_found_error_message : dict 
-        error message if issue finding updates object json.   
-    :status_code : int
-        response status code. 200 is a successful response, 400 means there was an 
-        invalid parameter input.
-    """
-    #return error if blob not found in bucket 
-    if not (blob_exists):
-        return jsonify(blob_not_found_error_message), 400
-    return jsonify(all_iso3166_updates), 200
-
+@app.route('/alpha2/<input_alpha2>', methods=['GET'])
+@app.route('/alpha2/<input_alpha2>/', methods=['GET'])
 @app.route('/api/alpha2/<input_alpha2>', methods=['GET'])
 @app.route('/api/alpha2/<input_alpha2>/', methods=['GET'])
 @app.route('/api/alpha2/<input_alpha2>/year/', methods=['GET'])
@@ -232,7 +224,7 @@ def api_alpha2(input_alpha2):
     #if no input parameters set then return all country updates (all_iso3166_updates)
     if (alpha2_code == []):
         return jsonify(all_iso3166_updates), 200
-
+    
     #validate alpha-2 codes, remove any invalid ones, raise error if invalid alpha-3 codes input
     if (alpha2_code != []):
         if (',' in alpha2_code[0]):
@@ -248,9 +240,11 @@ def api_alpha2(input_alpha2):
                         error_message['path'] = request.base_url
                         return jsonify(error_message), 400
                     alpha2_code[code] = temp_code
-                #use regex to validate format of alpha-2 codes
+                #use regex to validate format of alpha-2 codes, raise error if invalid code input
                 if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[code]))) or (alpha2_code[code] not in list(iso3166.countries_by_alpha2.keys())):
-                    alpha2_code.remove(alpha2_code[code])
+                    error_message["message"] = f"Invalid 2 letter alpha-2 code input: {''.join(alpha2_code[code])}."
+                    error_message['path'] = request.base_url
+                    return jsonify(error_message), 400
         else:
             #api can accept 3 letter alpha-3 code for country, this has to be converted into its alpha-2 counterpart
             if (len(alpha2_code[0]) == 3):
@@ -284,34 +278,8 @@ def api_alpha2(input_alpha2):
 
     return jsonify(iso3166_updates), 200
 
-@app.route('/api/year', methods=['GET'])
-@app.route('/api/year/', methods=['GET'])
-def api_year_():
-    """
-    If the year path appended to URL but no year proceeds 
-    it then return all listed ISO 3166 updates for all 
-    countries for all years. Route can accept path with
-    or without trailing slash.
-    
-    Parameters
-    ----------
-    None
-
-    Returns 
-    -------
-    :all_iso3166_updates : json
-      jsonified response of all iso3166 updates for all years.
-    :blob_not_found_error_message : dict 
-        error message if issue finding updates object json in storage bucket. 
-    :status_code : int
-        response status code. 200 is a successful response, 400 means there was an 
-        invalid parameter input.
-    """
-    #return error if blob not found in bucket 
-    if not (blob_exists):
-        return jsonify(blob_not_found_error_message), 400
-    return all_iso3166_updates, 200
-
+@app.route('/year/<input_year>', methods=['GET'])
+@app.route('/year/<input_year>/', methods=['GET'])
 @app.route('/api/year/<input_year>', methods=['GET'])
 @app.route('/api/year/<input_year>/', methods=['GET'])
 @app.route('/api/year/<input_year>/alpha2/', methods=['GET'])
@@ -424,6 +392,9 @@ def api_year(input_year):
         input_data = all_iso3166_updates
 
         for code in input_alpha2_codes:
+            #skip XK (Kosovo)
+            if (code == "XK"):
+                continue 
             temp_iso3166_updates[code] = []
             for update in range(0, len(input_data[code])):
 
@@ -462,6 +433,8 @@ def api_year(input_year):
 
     return jsonify(iso3166_updates), 200
 
+@app.route('/year/<input_year>/alpha2/<input_alpha2>', methods=['GET'])
+@app.route('/year/<input_year>/alpha2/<input_alpha2>/', methods=['GET'])
 @app.route('/api/year/<input_year>/alpha2/<input_alpha2>', methods=['GET'])
 @app.route('/api/year/<input_year>/alpha2/<input_alpha2>/', methods=['GET'])
 @app.route('/api/alpha2/<input_alpha2>/year/<input_year>', methods=['GET'])
@@ -542,9 +515,11 @@ def api_alpha2_year(input_alpha2, input_year):
                         error_message['path'] = request.base_url
                         return jsonify(error_message), 400
                     alpha2_code[code] = temp_code
-                #use regex to validate format of alpha-2 codes
+                #use regex to validate format of alpha-2 codes, raise error if invalid code input
                 if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[code]))) or (alpha2_code[code] not in list(iso3166.countries_by_alpha2.keys())):
-                    alpha2_code.remove(alpha2_code[code])
+                    error_message["message"] = f"Invalid 2 letter alpha-2 code input: {''.join(alpha2_code[code])}."
+                    error_message['path'] = request.base_url
+                    return jsonify(error_message), 400
         else:
             #api can accept 3 letter alpha-3 code for country, this has to be converted into its alpha-2 counterpart
             if (len(alpha2_code[0]) == 3):
@@ -670,39 +645,8 @@ def api_alpha2_year(input_alpha2, input_year):
 
     return jsonify(iso3166_updates), 200
 
-@app.route('/api/months', methods=['GET']) 
-@app.route('/api/months/', methods=['GET'])
-def api_month_():
-    """
-    If the month path appended to URL but no month proceeds 
-    it then return an error with an error message specifying
-    that an input is required. Path can accept with or without 
-    trailing slash.
-    
-    Parameters
-    ----------
-    None
-
-    Returns 
-    -------
-    :invald_month_error_message : json
-      jsonified error message.
-    :blob_not_found_error_message : dict 
-        error message if issue finding updates object json in storage bucket.
-    :status_code : int
-        response status code. 200 is a successful response, 400 means there was an 
-        invalid parameter input.
-    """
-    #return error if blob not found in bucket 
-    if not (blob_exists):
-        return jsonify(blob_not_found_error_message), 400
-    
-    #return error message if no month parameter value input
-    invald_month_error_message = {}
-    invald_month_error_message["status"] = 400
-    invald_month_error_message["message"] = f"No month value input."
-    return jsonify(invald_month_error_message), 400
-
+@app.route('/months/<input_month>', methods=['GET'])
+@app.route('/months/<input_month>/', methods=['GET'])
 @app.route('/api/months/<input_month>', methods=['GET'])
 @app.route('/api/months/<input_month>/', methods=['GET'])
 def api_month(input_month):
@@ -793,6 +737,134 @@ def api_month(input_month):
     iso3166_updates = temp_iso3166_updates
 
     return jsonify(iso3166_updates), 200
+
+@app.route('/name/<input_name>', methods=['GET'])
+@app.route('/name/<input_name>/', methods=['GET'])
+@app.route('/api/name/<name>', methods=['GET'])
+@app.route('/api/name/<name>/', methods=['GET'])
+def api_name(name):
+    """
+    Flask route for name path. Return all ISO 3166 updates
+    for the inputted country name/names. If invalid name then 
+    return error. Route can accept the path with or without the 
+    trailing slash.
+
+    Parameters
+    ----------
+    :input_name : string/list
+        one or more country names as they are commmonly known in english.
+
+    Returns 
+    -------
+    :iso3166_updates : json
+      jsonified response of iso3166 updates per country name/names.
+    :blob_not_found_error_message : dict 
+        error message if issue finding updates object json in storage bucket.
+    :status_code : int
+        response status code. 200 is a successful response, 400 means there was an 
+        invalid parameter input.
+    """
+    #initialise vars
+    iso3166_updates_ = {}
+    alpha2_code = []
+    names = []    
+
+    #return error if blob not found in bucket 
+    if not (blob_exists):
+        return jsonify(blob_not_found_error_message), 400
+
+    #if no input parameters set then return error message
+    if (name == ""):
+        error_message["message"] = "The name input parameter cannot be empty."
+        error_message['path'] = request.base_url
+        return jsonify(error_message), 400
+
+    #remove unicode space (%20) from input parameter
+    name = name.replace('%20', ' ').title()
+
+    #path can accept multiple country names, seperated by a comma but several
+    #countries contain a comma already in their name. Seperate multiple country names
+    #by a comma, cast to a sorted list, unless any of the names are in the below list
+    name_comma_exceptions = ["BOLIVIA, PLURINATIONAL STATE OF",
+                    "BONAIRE, SINT EUSTATIUS AND SABA",
+                    "CONGO, DEMOCRATIC REPUBLIC OF THE",
+                    "IRAN, ISLAMIC REPUBLIC OF",
+                    "KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF",
+                    "KOREA, REPUBLIC OF",
+                    "MICRONESIA, FEDERATED STATES OF",
+                    "MOLDOVA, REPUBLIC OF",
+                    "PALESTINE, STATE OF",
+                    "SAINT HELENA, ASCENSION AND TRISTAN DA CUNHA",
+                    "TAIWAN, PROVINCE OF CHINA",
+                    "TANZANIA, UNITED REPUBLIC OF",
+                    "VIRGIN ISLANDS, BRITISH",
+                    "VIRGIN ISLANDS, U.S.",
+                    "VENEZUELA, BOLIVARIAN REPUBLIC OF"]
+    
+    #check if input country is in above list, if not add to sorted comma seperated list    
+    if (name.upper() in name_comma_exceptions):
+        names = [name]
+    else:
+        names = sorted(name.split(','))
+    
+    #list of country name exceptions that are converted into their more common name
+    name_converted = {"UAE": "United Arab Emirates", "Brunei": "Brunei Darussalam", "Bolivia": "Bolivia, Plurinational State of", 
+                      "Bosnia": "Bosnia and Herzegovina", "Bonaire": "Bonaire, Sint Eustatius and Saba", "DR Congo": 
+                      "Congo, the Democratic Republic of the", "Ivory Coast": "Côte d'Ivoire", "Cape Verde": "Cabo Verde", 
+                      "Cocos Islands": "Cocos (Keeling) Islands", "Falkland Islands": "Falkland Islands (Malvinas)", 
+                      "Micronesia": "Micronesia, Federated States of", "United Kingdom": "United Kingdom of Great Britain and Northern Ireland",
+                      "South Georgia": "South Georgia and the South Sandwich Islands", "Iran": "Iran, Islamic Republic of",
+                      "North Korea": "Korea, Democratic People's Republic of", "South Korea": "Korea, Republic of", 
+                      "Laos": "Lao People's Democratic Republic", "Moldova": "Moldova, Republic of", "Saint Martin": "Saint Martin (French part)",
+                      "Macau": "Macao", "Pitcairn Islands": "Pitcairn", "South Georgia": "South Georgia and the South Sandwich Islands",
+                      "Heard Island": "Heard Island and McDonald Islands", "Palestine": "Palestine, State of", 
+                      "Saint Helena": "Saint Helena, Ascension and Tristan da Cunha", "St Helena": "Saint Helena, Ascension and Tristan da Cunha",              
+                      "Saint Kitts": "Saint Kitts and Nevis", "St Kitts": "Saint Kitts and Nevis", "St Vincent": "Saint Vincent and the Grenadines", 
+                      "St Lucia": "Saint Lucia", "Saint Vincent": "Saint Vincent and the Grenadines", "Russia": "Russian Federation", 
+                      "Sao Tome and Principe":" São Tomé and Príncipe", "Sint Maarten": "Sint Maarten (Dutch part)", "Syria": "Syrian Arab Republic", 
+                      "Svalbard": "Svalbard and Jan Mayen", "French Southern and Antarctic Lands": "French Southern Territories", "Turkey": "Türkiye", 
+                      "Taiwan": "Taiwan, Province of China", "Tanzania": "Tanzania, United Republic of", "USA": "United States of America", 
+                      "United States": "United States of America", "Vatican City": "Holy See", "Vatican": "Holy See", "Venezuela": 
+                      "Venezuela, Bolivarian Republic of", "Virgin Islands, British": "British Virgin Islands"}
+    
+    #iterate over list of names, convert country names from name_converted dict, if applicable
+    for name_ in range(0, len(names)):
+        if (names[name_].title() in list(name_converted.keys())):
+            names[name_] = name_converted[names[name_]]
+
+    #remove all whitespace in any of the country names
+    names = [name_.strip(' ') for name_ in names]
+
+    #get list of available country names from iso3166 library, remove whitespace
+    all_names_no_space = [name_.strip(' ') for name_ in list(iso3166.countries_by_name.keys())]
+    
+    #iterate over all input country names, get corresponding 2 letter alpha-2 code
+    for name_ in names:
+
+        #get list of country name matches from input name using closeness function, using default cutoff parameter value
+        name_matches = get_close_matches(name_.upper(), all_names_no_space)
+        matching_name = ""
+
+        #get highest matching country name from one input (manually set British Virgin Islands vs US Virgin Islands)
+        if (name_matches != []):
+            if (name_ == "British Virgin Islands"):
+                matching_name = name_matches[1]
+            else:
+                matching_name = name_matches[0]
+        else:
+            #return error if country name not found
+            error_message["message"] = "Country name {} not found in the ISO 3166.".format(name_)
+            error_message['path'] = request.base_url
+            return jsonify(error_message), 400
+
+        #use iso3166 package to find corresponding alpha-2 code from its name
+        alpha2_code.append(iso3166.countries_by_name[matching_name.upper()].alpha2)
+    
+    #get country data from ISO3166-2 object, using alpha-2 code
+    for code in alpha2_code:
+        iso3166_updates_[code] = all_iso3166_updates[code]
+
+    return jsonify(iso3166_updates_), 200
 
 def convert_to_alpha2(alpha3_code):
     """ 
