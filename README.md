@@ -51,11 +51,12 @@ The API endpoint is available at the URL:
 > https://www.iso3166-updates.com/api
 
 The paths available in the API are below:
-* https://iso3166-updates.com/api/alpha2/<alpha2>
+* https://iso3166-updates.com/api/alpha2/<input_alpha2>
 * https://iso3166-updates.com/api/name/<input_name>
-* https://iso3166-updates.com/api/year/<year>
-* https://iso3166-updates.com/api/alpha2/<alpha2>/year/<year>
-* https://iso3166-updates.com/api/month/<month>
+* https://iso3166-updates.com/api/year/<input_year>
+* https://iso3166-updates.com/api/alpha2/<input_alpha2>/year/<input_year>
+* https://iso3166-updates.com/api/name/<input_name>/year/<input_year>
+* https://iso3166-updates.com/api/month/<input_month>
 
 Four query string parameters are available in the API - `alpha2`, `name`, `year` and `months`. 
 

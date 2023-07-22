@@ -23,3 +23,4 @@
 - [X] Update api.md file, need to add example of using /name path. Update readme about list of endpoints to include /name.
 - [X] https://iso3166-updates-frontend-amckenna41.vercel.app/alpha2/bt - this should either raise Error or bring you to BT country updates.
 - [X] In API, raise error if length of input alpha-2 code > 3.
+- [X] Add API path /name/input_name/year/2015. Add unit tests.
