@@ -398,8 +398,12 @@ def api_year(input_year):
             temp_iso3166_updates[code] = []
             for update in range(0, len(input_data[code])):
 
-                #convert year in Date Issued column to string of year
-                temp_year = str(datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
+                #convert year in Date Issued column to string of year, remove "corrected" date if applicable
+                if ("corrected" in input_data[code][update]["Date Issued"]):
+                    temp_year = str(datetime.strptime(re.sub("[(].*[)]", "", input_data[code][update]["Date Issued"]).replace(' ', "").
+                                                      replace(".", '').replace('\n', ''), '%Y-%m-%d').year)
+                else:
+                    temp_year = str(datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
 
                 #if year range true then get country updates within specified range inclusive
                 if (year_range):
@@ -610,8 +614,12 @@ def api_alpha2_year(input_alpha2, input_year):
             temp_iso3166_updates[code] = []
             for update in range(0, len(input_data[code])):
 
-                #convert year in Date Issued column to string of year
-                temp_year = str(datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
+                #convert year in Date Issued column to string of year, remove "corrected" date if applicable
+                if ("corrected" in input_data[code][update]["Date Issued"]):
+                    temp_year = str(datetime.strptime(re.sub("[(].*[)]", "", input_data[code][update]["Date Issued"]).replace(' ', "").
+                                                      replace(".", '').replace('\n', ''), '%Y-%m-%d').year)
+                else:
+                    temp_year = str(datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
 
                 #if year range true then get country updates within specified range inclusive
                 if (year_range):
@@ -860,8 +868,12 @@ def api_name_year(input_name, input_year):
             temp_iso3166_updates[code] = []
             for update in range(0, len(input_data[code])):
 
-                #convert year in Date Issued column to string of year
-                temp_year = str(datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
+                #convert year in Date Issued column to string of year, remove "corrected" date if applicable
+                if ("corrected" in input_data[code][update]["Date Issued"]):
+                    temp_year = str(datetime.strptime(re.sub("[(].*[)]", "", input_data[code][update]["Date Issued"]).replace(' ', "").
+                                                      replace(".", '').replace('\n', ''), '%Y-%m-%d').year)
+                else:
+                    temp_year = str(datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
 
                 #if year range true then get country updates within specified range inclusive
                 if (year_range):
@@ -964,8 +976,12 @@ def api_month(input_month):
             temp_iso3166_updates[code] = [] 
             for update in range(0, len(input_data[code])):
 
-                #convert date in Date Issued column to date object
-                row_date = (datetime.strptime(input_data[code][update]["Date Issued"], "%Y-%m-%d"))
+                #convert year in Date Issued column to date object, remove "corrected" date if applicable
+                if ("corrected" in input_data[code][update]["Date Issued"]):
+                    row_date = datetime.strptime(re.sub("[(].*[)]", "", input_data[code][update]["Date Issued"]).replace(' ', "").
+                                                      replace(".", '').replace('\n', ''), '%Y-%m-%d')
+                else:
+                    row_date = datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d')
                 
                 #calculate difference in dates
                 date_diff = relativedelta.relativedelta(current_datetime, row_date)
