@@ -25,3 +25,4 @@
 - [X] In API, raise error if length of input alpha-2 code > 3.
 - [X] Add API path /name/input_name/year/2015. Add unit tests.
 - [X] Update API to incorporate Date Issued Corrected functionality.
+- [X] Update api unit tests script to include updates from main iso3166-updates repo.
