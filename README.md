@@ -1,4 +1,4 @@
-# iso3166-updates-api
+# iso3166-updates-api 🌎
 
 <!-- ![Vercel](https://vercelbadge.vercel.app/api/amckenna41/iso3166-updates-frontend) -->
 ![Vercel](https://therealsujitk-vercel-badge.vercel.app/?app=iso3166-updates-frontend)
@@ -12,7 +12,7 @@
   <img src="https://upload.wikimedia.org/wikipedia/commons/e/e3/ISO_Logo_%28Red_square%29.svg" alt="iso" height="200" width="300"/>
 </div>
 
-> Frontend API for the iso3166-updates repo that returns the latest updates/changes to the ISO 3166-1 and ISO 3166-2 country codes and naming conventions, as per the ISO 3166 newsletter (https://www.iso.org/iso-3166-country-codes.html) and Online Browsing Platform (OBP) (https://www.iso.org/obp/ui) 🌎. Built using the Python [Flask][flask] framework and hosted on the [Vercel][vercel] platform.
+> Frontend API for the iso3166-updates repo that returns the latest updates/changes to the ISO 3166-1 and ISO 3166-2 country codes and naming conventions, as per the ISO 3166 newsletter (https://www.iso.org/iso-3166-country-codes.html) and Online Browsing Platform (OBP) (https://www.iso.org/obp/ui) 🌎. Built using the Python [Flask][flask] framework and hosted on the [Vercel][vercel] platform. A demo of the API and Python software it's built using is available [here][demo_iso3166_updates].
 
 Table of Contents
 -----------------
@@ -60,13 +60,13 @@ The paths available in the API are below:
 
 Four query string parameters are available in the API - `alpha2`, `name`, `year` and `months`. 
 
-* The 2 letter alpha-2 country code can be appended to the url as a query string parameter or as its own path ("?alpha2=JP" or /alpha2/JP). A single alpha-2 or list of them can be passed to the API (e.g "?alpha2="FR, DE, HU, ID, MA" or /alpha2/FR,DE,HU,ID,MA). The 3 letter alpha-3 counterpart for each country's alpha-2 code can also be passed into the `alpha2` parameter (e.g "?alpha2="FRA, DEU, HUN, IDN, MAR" or /alpha2/FRA,DEU,HUN,IDN,MAR). 
+* The 2 letter `alpha2` country code can be appended to the URL as a query string parameter or as its own path (e.g ?alpha2=JP or /alpha2/JP). A single alpha-2 or list of them can be passed to the API (e.g ?alpha2=FR, DE, HU, ID, MA or /alpha2/FR,DE,HU,ID,MA). For redudancy, the 3 letter alpha-3 counterpart for each country's alpha-2 code can also be passed into the `alpha2` parameter (e.g ?alpha2=FRA, DEU, HUN, IDN, MAR or /alpha2/FRA,DEU,HUN,IDN,MAR). 
 
-* The name parameter takes in a country's name as it is commonly known in English (e.g France, Moldova, Benin). A closeness function is used to get the most approximate available country from the one the user input. If one not found then an error is raised.
+* The `name` parameter takes in a country's name as it is commonly known in English. The country name can be appended to the URL as a query string parameter or as its own path (e.g ?name=France or /name/France). A single country name or list of them can be passed into the API (e.g ?name=France,Moldova,Benin or /name/France,Moldova,Benin). A closeness function is used to get the most approximate available country from the one the user input; if one is not found then an error is raised.
 
-* The year parameter can be a specific year, year range, or a cut-off year to get updates less than/more than a year (e.g "/year/2017", "2010-2015", "<2009", ">2002"). 
+* The `year` parameter can be a specific year, year range, or a cut-off year to get updates less than/more than a year. The year value can be appended to the URL as a query string parameter or as its own path (e.g ?year=2017 or /year/2017, ?year=2010-2015 or /year/2010-2015, ?year=<2009 or /year/<2009, ?year=2002 or /year/>2002). 
 
-* Finally, the months parameter will gather all updates for 1 or more alpha-2 codes from a number of months from the present day (e.g "?months=2", "/months/6", "/months/48").
+* Finally, the `months` parameter will gather all updates for 1 or more alpha-2 codes from a number of months from the present day. The month value can be appended to the URL as a query string parameter or as its own path (e.g ?months=2 or /months/12, ?months=24 or /months/24).
 
 * If no input parameter values specified then all ISO 3166-2 updates for all countries and years will be gotten.
 
@@ -85,7 +85,9 @@ The API documentation and usage with all useful commands and examples to the API
 
 Staying up to date
 ------------------
-The list of ISO 3166-2 updates was last updated on <strong>Nov 2022</strong>. The object storing all updates, both locally and on the API, are consistenly checked for the latest updates using a seperate custom-built application on Google Cloud. This app pulls all the latest updates/changes from all ISO 3166-2 data sources to check for the latest updates within a certain period e.g the past 3-6 months. The app compares the generated output with that of the updates json currently in the Google Cloud Storage bucket and will replace this json to integrate the latest updates found such that the API will have the most up-to-date data. The code for this app can be found in the `iso3166-updates` repo [here](https://github.com/amckenna41/iso3166-updates/tree/main/iso3166-check-for-updates)
+The list of ISO 3166-2 updates was last updated on <strong>Nov 2022</strong>.
+
+The object storing all updates, both locally (iso3166-updates.json) for the software pacakge and on the API in GCP Storage bucket, are consistenly checked for the latest updates using a Google Cloud Run microservice ([iso3166-check-for-updates](https://github.com/amckenna41/iso3166-updates/tree/main/iso3166-check-for-updates)). The application is built using a custom Docker container that uses the `iso3166-updates` Python software to pull all the latest updates/changes, from all ISO 3166-2 wiki's and each country's ISO website page, to check for the latest updates within a certain period e.g. the past 6-12 months (this month range is used as the ISO usually publishes their newsletter at the end of the year with occasional mid-year updates published). The app compares the generated output with that of the updates JSON currently in the Google Cloud Storage bucket and will replace this json to integrate the latest updates found, such that the API will have the most up-to-date data. A Cloud Scheduler is used to periodically call the application.
 
 Additionally, a GitHub Issue in the custom-built `iso3166-updates`, `iso3166-2` and `iso3166-flag-icons` repositories will automatically be created that outlines all updates/changes that need to be implemented into the `iso3166-updates`, `iso3166-2` and `iso3166-flag-icons` JSONs and repos.
 
@@ -126,6 +128,7 @@ Support
 
 [Back to top](#TOP)
 
+[demo_iso3166_updates]: https://colab.research.google.com/drive/1oGF3j3_9b_g2qAmBtv3n-xO2GzTYRJjf?usp=sharing
 [flask]: https://flask.palletsprojects.com/en/2.3.x/
 [python]: https://www.python.org/downloads/release/python-360/
 [requests]: https://requests.readthedocs.io/

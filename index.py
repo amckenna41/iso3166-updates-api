@@ -391,10 +391,11 @@ def api_year(input_year):
         input_alpha2_codes  = list(iso3166.countries_by_alpha2.keys())
         input_data = all_iso3166_updates
 
+        #remove XK (Kosovo) from list if applicable
+        if ("XK" in input_alpha2_codes):
+            input_alpha2_codes.remove("XK")
+            
         for code in input_alpha2_codes:
-            #skip XK (Kosovo)
-            if (code == "XK"):
-                continue 
             temp_iso3166_updates[code] = []
             for update in range(0, len(input_data[code])):
 
@@ -962,8 +963,12 @@ def api_month(input_month):
     temp_iso3166_updates = {}
 
     #get all alpha-2 codes from iso3166 and all updates data before filtering by month
-    input_alpha2_codes  = list(iso3166.countries_by_alpha2.keys())
+    input_alpha2_codes = list(iso3166.countries_by_alpha2.keys())
     input_data = all_iso3166_updates
+
+    #remove XK (Kosovo) from list if applicable
+    if ("XK" in input_alpha2_codes):
+        input_alpha2_codes.remove("XK")
     
     #get updates within input months range
     if (months != []):
