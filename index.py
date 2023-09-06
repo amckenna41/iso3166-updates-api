@@ -107,7 +107,7 @@ def api():
     Returns 
     -------
     :all_iso3166_updates : json
-      jsonified response of iso3166 updates.
+        jsonified response of iso3166 updates.
     :blob_not_found_error_message : dict 
         error message if issue finding updates object json.
     :status_code : int
@@ -135,14 +135,9 @@ def api():
     if not (request.args.get('year') is None):
         year = request.args.get('year')
 
-    #parse months parameter, return error message if invalid input
+    #parse months parameter
     if not (request.args.get('months') is None):
-        try:
-            months = int(request.args.get('months'))
-        except:
-            error_message["message"] = f"Invalid month input: {''.join(request.args.get('months'))}."
-            error_message['path'] = request.base_url
-            return jsonify(error_message), 400
+        months = request.args.get('months')
 
     #parse name parameter
     if not (request.args.get('name') is None):
@@ -161,11 +156,11 @@ def api():
     if (alpha2_code != [] and year != []):
         return redirect(url_for('api_alpha2_year', input_alpha2=alpha2_code, input_year=year))
 
-    #redirect to api_month route if month query string parameter set 
+    #redirect to api_month route if month query string parameter set, if other params are set they take precendence
     if (alpha2_code == [] and year == [] and name == "" and months != ""):
         return redirect(url_for('api_month', input_month=months))
 
-    #redirect to api_name route if name query string parameter set 
+    #redirect to api_name route if name query string parameter set, alpha-2 parameter takes precendence over name
     if (name != "" and alpha2_code == []):
         return redirect(url_for('api_name', input_month=months))
 
@@ -186,7 +181,7 @@ def api_alpha2(input_alpha2):
     code then return error. Additionally, if the alpha-2 + year 
     path is appended to URL but no year proceeds the year 
     parameter but a valid alpha-2 code/codes are input then 
-    return all listed ISO 3166 updates for countrys specified 
+    return all listed ISO 3166 updates for countries specified 
     by the input alpha-2 code/codes. The route can also accept
     the corresponding 3 letter alpha-3 code for all of the 
     alpha-2 codes. Route can accept path with or without trailing 
@@ -202,7 +197,7 @@ def api_alpha2(input_alpha2):
     Returns 
     -------
     :iso3166_updates : json
-      jsonified response of iso3166 updates per input alpha-2 code.
+        jsonified response of iso3166 updates per input alpha-2 code.
     :blob_not_found_error_message : dict 
         error message if issue finding updates object json.  
     :status_code : int
@@ -302,7 +297,7 @@ def api_year(input_year):
     Returns 
     -------
     :iso3166_updates : json
-      jsonified response of iso3166 updates per input year/years.
+        jsonified response of iso3166 updates per input year/years.
     :blob_not_found_error_message : dict 
         error message if issue finding updates object json in storage bucket.
     :status_code : int
@@ -336,7 +331,7 @@ def api_year(input_year):
             year[y] = "<" + year[y][3:]
 
     #a '-' seperating 2 years implies a year range of sought country updates
-    #a ',' seperating 2 year implies a list of years
+    #a ',' seperating 2 years implies a list of years
     #a '>' before year means get all country updates greater than or equal to specified year
     #a '<' before year means get all country updates less than specified year
     #validate format of year input parameter 
@@ -467,7 +462,7 @@ def api_alpha2_year(input_alpha2, input_year):
     Returns 
     -------
     :iso3166_updates : json
-      jsonified response of iso3166 updates per input alpha-2 code and year.
+        jsonified response of iso3166 updates per input alpha-2 code and year.
     :blob_not_found_error_message : dict 
         error message if issue finding updates object json in storage bucket.
     :status_code : int
@@ -544,7 +539,7 @@ def api_alpha2_year(input_alpha2, input_year):
                 return jsonify(error_message), 400
 
     #a '-' seperating 2 years implies a year range of sought country updates
-    #a ',' seperating 2 year implies a list of years
+    #a ',' seperating 2 years implies a list of years
     #a '>' before year means get all country updates greater than or equal to specified year
     #a '<' before year means get all country updates less than specified year
     #validate format of year input parameter 
@@ -578,7 +573,7 @@ def api_alpha2_year(input_alpha2, input_year):
                 year = []
                 less_than = False
     
-    #iterate over all years, validate each are valid years, raise error if invalid year
+    #iterate over all years, validate each are correct formar, raise error if invalid year
     for year_ in year:
         #skip to next iteration if < or > symbol
         if (year_ == '<' or year_ == '>'):
@@ -681,7 +676,7 @@ def api_name_year(input_name, input_year):
     Returns 
     -------
     :iso3166_updates : json
-      jsonified response of iso3166 updates per input country name and year.
+        jsonified response of iso3166 updates per input country name and year.
     :blob_not_found_error_message : dict 
         error message if issue finding updates object json in storage bucket.
     :status_code : int
@@ -715,25 +710,6 @@ def api_name_year(input_name, input_year):
     #remove unicode space (%20) from input parameter
     input_name = input_name.replace('%20', ' ').title()
 
-    #path can accept multiple country names, seperated by a comma but several
-    #countries contain a comma already in their name. Seperate multiple country names
-    #by a comma, cast to a sorted list, unless any of the names are in the below list
-    name_comma_exceptions = ["BOLIVIA, PLURINATIONAL STATE OF",
-                    "BONAIRE, SINT EUSTATIUS AND SABA",
-                    "CONGO, DEMOCRATIC REPUBLIC OF THE",
-                    "IRAN, ISLAMIC REPUBLIC OF",
-                    "KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF",
-                    "KOREA, REPUBLIC OF",
-                    "MICRONESIA, FEDERATED STATES OF",
-                    "MOLDOVA, REPUBLIC OF",
-                    "PALESTINE, STATE OF",
-                    "SAINT HELENA, ASCENSION AND TRISTAN DA CUNHA",
-                    "TAIWAN, PROVINCE OF CHINA",
-                    "TANZANIA, UNITED REPUBLIC OF",
-                    "VIRGIN ISLANDS, BRITISH",
-                    "VIRGIN ISLANDS, U.S.",
-                    "VENEZUELA, BOLIVARIAN REPUBLIC OF"]
-    
     #check if input country is in above list, if not add to sorted comma seperated list    
     if (input_name.upper() in name_comma_exceptions):
         names = [input_name]
@@ -743,26 +719,6 @@ def api_name_year(input_name, input_year):
     #if no input parameters set then return all country updates (all_iso3166_updates)
     if (year == [] and names == []):
         return jsonify(all_iso3166_updates), 200
-
-    #list of country name exceptions that are converted into their more common name
-    name_converted = {"UAE": "United Arab Emirates", "Brunei": "Brunei Darussalam", "Bolivia": "Bolivia, Plurinational State of", 
-                      "Bosnia": "Bosnia and Herzegovina", "Bonaire": "Bonaire, Sint Eustatius and Saba", "DR Congo": 
-                      "Congo, the Democratic Republic of the", "Ivory Coast": "Côte d'Ivoire", "Cape Verde": "Cabo Verde", 
-                      "Cocos Islands": "Cocos (Keeling) Islands", "Falkland Islands": "Falkland Islands (Malvinas)", 
-                      "Micronesia": "Micronesia, Federated States of", "United Kingdom": "United Kingdom of Great Britain and Northern Ireland",
-                      "South Georgia": "South Georgia and the South Sandwich Islands", "Iran": "Iran, Islamic Republic of",
-                      "North Korea": "Korea, Democratic People's Republic of", "South Korea": "Korea, Republic of", 
-                      "Laos": "Lao People's Democratic Republic", "Moldova": "Moldova, Republic of", "Saint Martin": "Saint Martin (French part)",
-                      "Macau": "Macao", "Pitcairn Islands": "Pitcairn", "South Georgia": "South Georgia and the South Sandwich Islands",
-                      "Heard Island": "Heard Island and McDonald Islands", "Palestine": "Palestine, State of", 
-                      "Saint Helena": "Saint Helena, Ascension and Tristan da Cunha", "St Helena": "Saint Helena, Ascension and Tristan da Cunha",              
-                      "Saint Kitts": "Saint Kitts and Nevis", "St Kitts": "Saint Kitts and Nevis", "St Vincent": "Saint Vincent and the Grenadines", 
-                      "St Lucia": "Saint Lucia", "Saint Vincent": "Saint Vincent and the Grenadines", "Russia": "Russian Federation", 
-                      "Sao Tome and Principe":" São Tomé and Príncipe", "Sint Maarten": "Sint Maarten (Dutch part)", "Syria": "Syrian Arab Republic", 
-                      "Svalbard": "Svalbard and Jan Mayen", "French Southern and Antarctic Lands": "French Southern Territories", "Turkey": "Türkiye", 
-                      "Taiwan": "Taiwan, Province of China", "Tanzania": "Tanzania, United Republic of", "USA": "United States of America", 
-                      "United States": "United States of America", "Vatican City": "Holy See", "Vatican": "Holy See", "Venezuela": 
-                      "Venezuela, Bolivarian Republic of", "Virgin Islands, British": "British Virgin Islands"}
     
     #iterate over list of names, convert country names from name_converted dict, if applicable
     for name_ in range(0, len(names)):
@@ -798,7 +754,7 @@ def api_name_year(input_name, input_year):
         alpha2_code.append(iso3166.countries_by_name[matching_name.upper()].alpha2)
     
     #a '-' seperating 2 years implies a year range of sought country updates
-    #a ',' seperating 2 year implies a list of years
+    #a ',' seperating 2 years implies a list of years
     #a '>' before year means get all country updates greater than or equal to specified year
     #a '<' before year means get all country updates less than specified year
     #validate format of year input parameter 
@@ -832,7 +788,7 @@ def api_name_year(input_name, input_year):
                 year = []
                 less_than = False
     
-    #iterate over all years, validate each are valid years, raise error if invalid year
+    #iterate over all years, validate each are correct format, raise error if invalid year
     for year_ in year:
         #skip to next iteration if < or > symbol
         if (year_ == '<' or year_ == '>'):
@@ -923,13 +879,12 @@ def api_month(input_month):
     Parameters
     ----------
     :input_month : string/list
-        number of past months to get published updates from, 
-        inclusive.
+        number of past months to get published updates from, inclusive.
 
     Returns 
     -------
     :iso3166_updates : json
-      jsonified response of iso3166 updates per input month.
+        jsonified response of iso3166 updates per input month.
     :blob_not_found_error_message : dict 
         error message if issue finding updates object json in storage bucket.  
     :status_code : int
@@ -1002,7 +957,7 @@ def api_month(input_month):
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
     else:
-        temp_iso3166_updates = input_data #return updates data when Years and Month params are emptya
+        temp_iso3166_updates = input_data #return updates data when Years and Month params are 
     
     #set main updates dict to temp one
     iso3166_updates = temp_iso3166_updates
@@ -1028,7 +983,7 @@ def api_name(input_name):
     Returns 
     -------
     :iso3166_updates : json
-      jsonified response of iso3166 updates per country name/names.
+        jsonified response of iso3166 updates per country name/names.
     :blob_not_found_error_message : dict 
         error message if issue finding updates object json in storage bucket.
     :status_code : int
@@ -1052,51 +1007,12 @@ def api_name(input_name):
 
     #remove unicode space (%20) from input parameter
     input_name = input_name.replace('%20', ' ').title()
-
-    #path can accept multiple country names, seperated by a comma but several
-    #countries contain a comma already in their name. Seperate multiple country names
-    #by a comma, cast to a sorted list, unless any of the names are in the below list
-    name_comma_exceptions = ["BOLIVIA, PLURINATIONAL STATE OF",
-                    "BONAIRE, SINT EUSTATIUS AND SABA",
-                    "CONGO, DEMOCRATIC REPUBLIC OF THE",
-                    "IRAN, ISLAMIC REPUBLIC OF",
-                    "KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF",
-                    "KOREA, REPUBLIC OF",
-                    "MICRONESIA, FEDERATED STATES OF",
-                    "MOLDOVA, REPUBLIC OF",
-                    "PALESTINE, STATE OF",
-                    "SAINT HELENA, ASCENSION AND TRISTAN DA CUNHA",
-                    "TAIWAN, PROVINCE OF CHINA",
-                    "TANZANIA, UNITED REPUBLIC OF",
-                    "VIRGIN ISLANDS, BRITISH",
-                    "VIRGIN ISLANDS, U.S.",
-                    "VENEZUELA, BOLIVARIAN REPUBLIC OF"]
     
     #check if input country is in above list, if not add to sorted comma seperated list    
     if (input_name.upper() in name_comma_exceptions):
         names = [input_name]
     else:
         names = sorted(input_name.split(','))
-    
-    #list of country name exceptions that are converted into their more common name
-    name_converted = {"UAE": "United Arab Emirates", "Brunei": "Brunei Darussalam", "Bolivia": "Bolivia, Plurinational State of", 
-                      "Bosnia": "Bosnia and Herzegovina", "Bonaire": "Bonaire, Sint Eustatius and Saba", "DR Congo": 
-                      "Congo, the Democratic Republic of the", "Ivory Coast": "Côte d'Ivoire", "Cape Verde": "Cabo Verde", 
-                      "Cocos Islands": "Cocos (Keeling) Islands", "Falkland Islands": "Falkland Islands (Malvinas)", 
-                      "Micronesia": "Micronesia, Federated States of", "United Kingdom": "United Kingdom of Great Britain and Northern Ireland",
-                      "South Georgia": "South Georgia and the South Sandwich Islands", "Iran": "Iran, Islamic Republic of",
-                      "North Korea": "Korea, Democratic People's Republic of", "South Korea": "Korea, Republic of", 
-                      "Laos": "Lao People's Democratic Republic", "Moldova": "Moldova, Republic of", "Saint Martin": "Saint Martin (French part)",
-                      "Macau": "Macao", "Pitcairn Islands": "Pitcairn", "South Georgia": "South Georgia and the South Sandwich Islands",
-                      "Heard Island": "Heard Island and McDonald Islands", "Palestine": "Palestine, State of", 
-                      "Saint Helena": "Saint Helena, Ascension and Tristan da Cunha", "St Helena": "Saint Helena, Ascension and Tristan da Cunha",              
-                      "Saint Kitts": "Saint Kitts and Nevis", "St Kitts": "Saint Kitts and Nevis", "St Vincent": "Saint Vincent and the Grenadines", 
-                      "St Lucia": "Saint Lucia", "Saint Vincent": "Saint Vincent and the Grenadines", "Russia": "Russian Federation", 
-                      "Sao Tome and Principe":" São Tomé and Príncipe", "Sint Maarten": "Sint Maarten (Dutch part)", "Syria": "Syrian Arab Republic", 
-                      "Svalbard": "Svalbard and Jan Mayen", "French Southern and Antarctic Lands": "French Southern Territories", "Turkey": "Türkiye", 
-                      "Taiwan": "Taiwan, Province of China", "Tanzania": "Tanzania, United Republic of", "USA": "United States of America", 
-                      "United States": "United States of America", "Vatican City": "Holy See", "Vatican": "Holy See", "Venezuela": 
-                      "Venezuela, Bolivarian Republic of", "Virgin Islands, British": "British Virgin Islands"}
     
     #iterate over list of names, convert country names from name_converted dict, if applicable
     for name_ in range(0, len(names)):
@@ -1136,6 +1052,45 @@ def api_name(input_name):
         iso3166_updates_[code] = all_iso3166_updates[code]
 
     return jsonify(iso3166_updates_), 200
+
+#path can accept multiple country names, seperated by a comma but several
+#countries contain a comma already in their name. Seperate multiple country names
+#by a comma, cast to a sorted list, unless any of the names are in the below list
+name_comma_exceptions = ["BOLIVIA, PLURINATIONAL STATE OF",
+                "BONAIRE, SINT EUSTATIUS AND SABA",
+                "CONGO, DEMOCRATIC REPUBLIC OF THE",
+                "IRAN, ISLAMIC REPUBLIC OF",
+                "KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF",
+                "KOREA, REPUBLIC OF",
+                "MICRONESIA, FEDERATED STATES OF",
+                "MOLDOVA, REPUBLIC OF",
+                "PALESTINE, STATE OF",
+                "SAINT HELENA, ASCENSION AND TRISTAN DA CUNHA",
+                "TAIWAN, PROVINCE OF CHINA",
+                "TANZANIA, UNITED REPUBLIC OF",
+                "VIRGIN ISLANDS, BRITISH",
+                "VIRGIN ISLANDS, U.S.",
+                "VENEZUELA, BOLIVARIAN REPUBLIC OF"]
+
+#list of country name exceptions that are converted into their more common name
+name_converted = {"UAE": "United Arab Emirates", "Brunei": "Brunei Darussalam", "Bolivia": "Bolivia, Plurinational State of", 
+                    "Bosnia": "Bosnia and Herzegovina", "Bonaire": "Bonaire, Sint Eustatius and Saba", "DR Congo": 
+                    "Congo, the Democratic Republic of the", "Ivory Coast": "Côte d'Ivoire", "Cape Verde": "Cabo Verde", 
+                    "Cocos Islands": "Cocos (Keeling) Islands", "Falkland Islands": "Falkland Islands (Malvinas)", 
+                    "Micronesia": "Micronesia, Federated States of", "United Kingdom": "United Kingdom of Great Britain and Northern Ireland",
+                    "South Georgia": "South Georgia and the South Sandwich Islands", "Iran": "Iran, Islamic Republic of",
+                    "North Korea": "Korea, Democratic People's Republic of", "South Korea": "Korea, Republic of", 
+                    "Laos": "Lao People's Democratic Republic", "Moldova": "Moldova, Republic of", "Saint Martin": "Saint Martin (French part)",
+                    "Macau": "Macao", "Pitcairn Islands": "Pitcairn", "South Georgia": "South Georgia and the South Sandwich Islands",
+                    "Heard Island": "Heard Island and McDonald Islands", "Palestine": "Palestine, State of", 
+                    "Saint Helena": "Saint Helena, Ascension and Tristan da Cunha", "St Helena": "Saint Helena, Ascension and Tristan da Cunha",              
+                    "Saint Kitts": "Saint Kitts and Nevis", "St Kitts": "Saint Kitts and Nevis", "St Vincent": "Saint Vincent and the Grenadines", 
+                    "St Lucia": "Saint Lucia", "Saint Vincent": "Saint Vincent and the Grenadines", "Russia": "Russian Federation", 
+                    "Sao Tome and Principe":" São Tomé and Príncipe", "Sint Maarten": "Sint Maarten (Dutch part)", "Syria": "Syrian Arab Republic", 
+                    "Svalbard": "Svalbard and Jan Mayen", "French Southern and Antarctic Lands": "French Southern Territories", "Turkey": "Türkiye", 
+                    "Taiwan": "Taiwan, Province of China", "Tanzania": "Tanzania, United Republic of", "USA": "United States of America", 
+                    "United States": "United States of America", "Vatican City": "Holy See", "Vatican": "Holy See", "Venezuela": 
+                    "Venezuela, Bolivarian Republic of", "Virgin Islands, British": "British Virgin Islands"}
 
 def convert_to_alpha2(alpha3_code):
     """ 
