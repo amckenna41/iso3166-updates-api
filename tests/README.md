@@ -3,7 +3,7 @@
 All of the modules and functionalities of iso3166-updates-api are thoroughly tested using the Python [unittest][unittest] framework.
 ## Module tests:
 
-* `test_iso3166_updates_api` - tests for iso3166-updates-api.
+* `test_iso3166_updates_api` - unit tests for iso3166-updates-api.
 
 ## Running Tests
 
