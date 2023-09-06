@@ -770,10 +770,10 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
         self.assertIsInstance(test_request_md, dict, "Expected output object of API to be of type dict, got {}.".format(type(test_request_md)))
         self.assertIsInstance(test_request_md["MD"], list, "Expected ouput object of API updates to be of type list, got {}.".format(type(test_request_md["MD"])))
         self.assertEqual(list(test_request_md.keys()), ["MD"], "Expected parent key does not match output, got {}.".format(list(test_request_md.keys())))
-        for row in test_request_md["SD"]:
+        for row in test_request_md["MD"]:
                 self.assertEqual(list(row.keys()), self.expected_output_columns, "Expected columns do not match output, got\n{}.".format(list(row.keys())))
-        self.assertEqual(len(test_request_md["SD"]), 6, "Expected there to be 7 elements in output object, got {}.".format(len(test_request_md["MD"])))
-        self.assertEqual(test_request_md["SD"][0], test_name_md_expected, "Expected and observed outputs do not match.")
+        self.assertEqual(len(test_request_md["MD"]), 11, "Expected there to be 11 elements in output object, got {}.".format(len(test_request_md["MD"])))
+        self.assertEqual(test_request_md["MD"][0], test_name_md_expected, "Expected and observed outputs do not match.")
 #5.)
         test_request_ml_ni = requests.get(self.name_base_url + test_name_mali_nicaragua, headers=self.user_agent_header).json() #Mali, Nicaragua 
 
