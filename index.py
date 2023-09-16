@@ -55,11 +55,11 @@ def home():
     purpose of API and its documentation. 
 
     Parameters
-    ----------
+    ==========
     None
 
     Returns
-    -------
+    =======
     :render_template : html
       Flask html template for index.html page.
     :blob_not_found_error_message : dict 
@@ -101,11 +101,11 @@ def api():
     Route can accept the path with or without the trailing slash.
 
     Parameters
-    ----------
+    ==========
     None
 
     Returns 
-    -------
+    =======
     :all_iso3166_updates : json
         jsonified response of iso3166 updates.
     :blob_not_found_error_message : dict 
@@ -188,14 +188,14 @@ def api_alpha2(input_alpha2):
     slash.
 
     Parameters
-    ----------
+    ==========
     :input_alpha2 : string/list
         1 or more 2 letter alpha-2 country codes according to ISO 3166-1.
         Can also accept the 3 letter alpha-3 code counterparts for each 
         of the alpha-2 codes.
 
     Returns 
-    -------
+    =======
     :iso3166_updates : json
         jsonified response of iso3166 updates per input alpha-2 code.
     :blob_not_found_error_message : dict 
@@ -288,14 +288,14 @@ def api_year(input_year):
     trailing slash.
 
     Parameters
-    ----------
+    ==========
     :input_year : string/list
         year, list of years, or year range to get updates
         from. Can also accept greater than or less than symbol
         returning updates greater than/less than specified year.
 
     Returns 
-    -------
+    =======
     :iso3166_updates : json
         jsonified response of iso3166 updates per input year/years.
     :blob_not_found_error_message : dict 
@@ -449,7 +449,7 @@ def api_alpha2_year(input_alpha2, input_year):
     the path with or without the trailing slash.
     
     Parameters
-    ----------
+    ==========
     :input_alpha2 : string/list
         1 or more 2 letter alpha-2 country codes according to ISO 3166-1.
         Can also accept the 3 letter alpha-3 counterpart for each alpha-2
@@ -460,7 +460,7 @@ def api_alpha2_year(input_alpha2, input_year):
         returning updates greater than/less than specified year.
 
     Returns 
-    -------
+    =======
     :iso3166_updates : json
         jsonified response of iso3166 updates per input alpha-2 code and year.
     :blob_not_found_error_message : dict 
@@ -664,7 +664,7 @@ def api_name_year(input_name, input_year):
     the trailing slash.
     
     Parameters
-    ----------
+    ==========
     :input_name : string/list
         1 or more country names as they are most commonly known in English,
         according to the ISO 3166-1.
@@ -674,7 +674,7 @@ def api_name_year(input_name, input_year):
         returning updates greater than/less than specified year.
 
     Returns 
-    -------
+    =======
     :iso3166_updates : json
         jsonified response of iso3166 updates per input country name and year.
     :blob_not_found_error_message : dict 
@@ -877,12 +877,12 @@ def api_month(input_month):
     slash.
 
     Parameters
-    ----------
+    ==========
     :input_month : string/list
         number of past months to get published updates from, inclusive.
 
     Returns 
-    -------
+    =======
     :iso3166_updates : json
         jsonified response of iso3166 updates per input month.
     :blob_not_found_error_message : dict 
@@ -976,12 +976,12 @@ def api_name(input_name):
     trailing slash.
 
     Parameters
-    ----------
+    ==========
     :input_name : string/list
         one or more country names as they are commmonly known in english.
 
     Returns 
-    -------
+    =======
     :iso3166_updates : json
         jsonified response of iso3166 updates per country name/names.
     :blob_not_found_error_message : dict 
@@ -1098,12 +1098,12 @@ def convert_to_alpha2(alpha3_code):
     alpha-2 counterpart. 
 
     Parameters 
-    ----------
+    ==========
     :alpha3_code: str
         3 letter ISO 3166 country code.
     
     Returns
-    -------
+    =======
     :iso3166.countries_by_alpha3[alpha3_code].alpha2: str
         2 letter ISO 3166 country code. 
     """
@@ -1121,12 +1121,12 @@ def not_found(e):
     Flask app.
 
     Parameters
-    ----------
+    ==========
     :e : int
         error code.
 
     Returns
-    -------
+    =======
     :render_template : html
       Flask html template for error.html page.
     :status_code : int
