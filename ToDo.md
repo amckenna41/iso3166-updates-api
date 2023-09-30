@@ -1,7 +1,7 @@
 - [X] Make bucket and iso3166-updates.json file publicly accessible (https://storage.googleapis.com/iso3166-updates/iso3166-updates.json).
 - [X] Update <title> and logo on page (world emoji).
 - [X] http://127.0.0.1:5000/api?alpha2=dasdjasd and http://127.0.0.1:5000/api?year=dasdjasd, should catch this alpha2 and year input error.
-- [ ] Make index.html into a more appealing front-end.
+- [X] Make index.html into a more appealing front-end.
 - [X] For API, instead of returning all data when invalid alpha2/year input, return a jsonifed error message. Return all when any of args are empty. 
 - [X] Make Storage Bucket unpublic.
 - [X] Use Python GCP client library instead of requests library:
@@ -28,3 +28,17 @@
 - [X] Update api unit tests script to include updates from main iso3166-updates repo.
 - [X] Go over main repo readmes.
 - [X] Change all comment underlining from "------" to "=======".
+- [X] Update index.html and error.html to that of iso3166-2-api.
+- [X] Validate that .vercelignore is being executed.
+- [X] In Api.md and readme, change reference of query string parameters to endpoints/paths.
+- [X] Read over app.py
+- [X] Update API routes such that "/" and "/api" return the documentation. 
+- [X] Add "/all" endpoint to return all data - need to update api.md file as well.
+- [X] Update demo notebook with new API examples.
+- [X] Remove request.args.get (query string parameters)
+- [X] Use f string literasl for javascript and Python examples in api.md: https://stackoverflow.com/questions/610406/javascript-equivalent-to-printf-string-format
+- [X] In await.fetch, need to change "" to ``.
+- [X] Copy API tests over to iso3166-updates.
+- [X] In api unit tests need to update requests calls, append to endpoint rather than query string params.
+- [ ] Read over demo notebook.
+- [ ] Update readme's.

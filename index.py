@@ -19,7 +19,7 @@ bucket_name = os.environ["BUCKET_NAME"]
 blob_name = os.environ["BLOB_NAME"]
 blob_path = "gs://" + bucket_name + "/" + blob_name
 
-##### Import ISO3166 updates JSON from GCP Storage bucket #####
+##### Import ISO 3166 updates JSON from GCP Storage bucket #####
 #convert str of service account from env var into json 
 sa_json = json.loads(sa_json_str)
 #pass service account json into credentials object
@@ -29,7 +29,7 @@ storage_client = storage.Client(project=project_id, credentials=credentials)
 #initialise bucket object
 bucket = storage_client.bucket(bucket_name)
 #get blob from bucket
-blob = bucket.blob(os.environ["BLOB_NAME"])      
+blob = bucket.blob(blob_name)
 #bool to track if blob exists
 blob_exists = True
 #return error if object not found in bucket
@@ -49,6 +49,8 @@ error_message = {}
 error_message["status"] = 400
 
 @app.route('/')
+@app.route('/api/')
+@app.route('/api')
 def home():
     """
     Default route for https://iso3166-updates.com. Main homepage for API displaying the 
@@ -60,113 +62,44 @@ def home():
 
     Returns
     =======
-    :render_template : html
+    :flask.render_template : html
       Flask html template for index.html page.
-    :blob_not_found_error_message : dict 
-        error message if issue finding updates object json.
-    :status_code : int
-        response status code. 200 is a successful response, 400 means there was an 
-        invalid parameter input. 
     """
-    #return error if blob not found in bucket 
-    if not (blob_exists):
-        return jsonify(blob_not_found_error_message), 400
-    
-    #raise error if /api not prepended to url path before parameters
-    if ('year' or 'alpha2') in list(request.args):
-        error_message["message"] = "/api path must feature in URL endpoint."
-        error_message['path'] = request.base_url
-        return jsonify(error_message), 400
+    return render_template('index.html')
 
-    return render_template('index.html', string=all_iso3166_updates)
-
-@app.route('/api', methods=['GET'])
-@app.route('/api/', methods=['GET'])
-@app.route('/api/alpha2', methods=['GET'])
-@app.route('/api/alpha2/', methods=['GET'])
-@app.route('/api/name/', methods=['GET'])
-@app.route('/api/name', methods=['GET'])
-@app.route('/api/year', methods=['GET'])
-@app.route('/api/year/', methods=['GET'])
-@app.route('/api/months', methods=['GET']) 
-@app.route('/api/months/', methods=['GET'])
-def api():
+@app.route('/all', methods=['GET'])
+@app.route('/all/', methods=['GET'])
+@app.route('/api/all', methods=['GET'])
+@app.route('/api/all/', methods=['GET'])
+# @app.route('/api/alpha2', methods=['GET'])
+# @app.route('/api/alpha2/', methods=['GET'])
+# @app.route('/api/name/', methods=['GET'])
+# @app.route('/api/name', methods=['GET'])
+# @app.route('/api/year', methods=['GET'])
+# @app.route('/api/year/', methods=['GET'])
+# @app.route('/api/months', methods=['GET']) 
+# @app.route('/api/months/', methods=['GET'])
+def all():
     """
-    Main route for API (https://iso3166-updates.com/api) that can accept the alpha-2, 
-    year, months and name paths and query string parameters and return the relevant 
-    ISO 3166 updates. The API uses a pre-created json with all the latest updates 
-    stored in a GCP Cloud Storage bucket, the object is imported in after 
-    authentication and used as the basis of the API. If query string parameters are
-    appended to the path they will be redirected to their respective Flask route.
-    Route can accept the path with or without the trailing slash.
+    Flask route for '/api/all' path/endpoint. Return all ISO 3166-2 Updates data for all available 
+    countries. Route can accept path with or without trailing slash.
 
     Parameters
     ==========
     None
 
-    Returns 
+    Returns
     =======
-    :all_iso3166_updates : json
-        jsonified response of iso3166 updates.
-    :blob_not_found_error_message : dict 
-        error message if issue finding updates object json.
+    :jsonify(all_iso3166_2) : json
+        jsonified ISO 3166-2 data.
     :status_code : int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input. 
-    :Flask.redirect : app.route
-        Flask route redirected using the redirect function, specific route and URL
-        used is determined by input parameters. 
-    """
-    #initialise vars
-    alpha2_code = []
-    year = []
-    months = ""
-    name = ""
-
-    #return error if blob not found in bucket 
+    """  
+    #return error if blob not found in bucket, else return all ISO 3166-2 Updates data
     if not (blob_exists):
         return jsonify(blob_not_found_error_message), 400
-
-    #parse alpha-2 code parameter
-    if not (request.args.get('alpha2') is None):
-        alpha2_code = ','.join(sorted([request.args.get('alpha2').upper()]))
-    
-    #parse year parameter
-    if not (request.args.get('year') is None):
-        year = request.args.get('year')
-
-    #parse months parameter
-    if not (request.args.get('months') is None):
-        months = request.args.get('months')
-
-    #parse name parameter
-    if not (request.args.get('name') is None):
-        name = request.args.get('name')
-
-    #redirect to api_alpha2 route if alpha-2 query string parameter set 
-    if (alpha2_code != [] and year == []):
-        return redirect(url_for('api_alpha2', input_alpha2=alpha2_code))
-
-    #redirect to api_year route if year query string parameter set 
-    if ((alpha2_code == [] and year != [] and name == "") or \
-        (alpha2_code == [] and year != [] and months != [])):
-        return redirect(url_for('api_year', input_year=year))
-
-    #redirect to api_alpha2_year route if alpha-2 and year query string parameter set 
-    if (alpha2_code != [] and year != []):
-        return redirect(url_for('api_alpha2_year', input_alpha2=alpha2_code, input_year=year))
-
-    #redirect to api_month route if month query string parameter set, if other params are set they take precendence
-    if (alpha2_code == [] and year == [] and name == "" and months != ""):
-        return redirect(url_for('api_month', input_month=months))
-
-    #redirect to api_name route if name query string parameter set, alpha-2 parameter takes precendence over name
-    if (name != "" and alpha2_code == []):
-        return redirect(url_for('api_name', input_month=months))
-
-    #if no input parameters set then return all ISO3166 updates for all countries
-    if (year == [] and alpha2_code == [] and months == "" and name == ""):
-        return jsonify(all_iso3166_updates), 200
+    return jsonify(all_iso3166_updates), 200
 
 @app.route('/alpha2/<input_alpha2>', methods=['GET'])
 @app.route('/alpha2/<input_alpha2>/', methods=['GET'])
@@ -176,23 +109,18 @@ def api():
 @app.route('/api/alpha2/<input_alpha2>/year', methods=['GET'])
 def api_alpha2(input_alpha2):
     """
-    Flask route for alpha-2 path. Return all ISO 3166 updates
-    for the inputted alpha-2 code/codes. If invalid alpha-2
-    code then return error. Additionally, if the alpha-2 + year 
-    path is appended to URL but no year proceeds the year 
-    parameter but a valid alpha-2 code/codes are input then 
-    return all listed ISO 3166 updates for countries specified 
-    by the input alpha-2 code/codes. The route can also accept
-    the corresponding 3 letter alpha-3 code for all of the 
-    alpha-2 codes. Route can accept path with or without trailing 
-    slash.
+    Flask route for alpha-2 path. Return all ISO 3166 updates for the inputted alpha-2 code/codes. 
+    If invalid alpha-2 code then return error. Additionally, if the alpha-2 + year path is appended 
+    to URL but no year proceeds the year parameter but a valid alpha-2 code/codes are input then 
+    return all listed ISO 3166 updates for countries specified by the input alpha-2 code/codes. 
+    The route can also accept the corresponding 3 letter alpha-3 code for all of the alpha-2 codes. 
+    Route can accept path with or without trailing slash.
 
     Parameters
     ==========
     :input_alpha2 : string/list
-        1 or more 2 letter alpha-2 country codes according to ISO 3166-1.
-        Can also accept the 3 letter alpha-3 code counterparts for each 
-        of the alpha-2 codes.
+        1 or more 2 letter alpha-2 country codes according to theISO 3166-1. Can also accept the 3 
+        letter alpha-3 code counterparts for each of the alpha-2 codes.
 
     Returns 
     =======
@@ -216,11 +144,11 @@ def api_alpha2(input_alpha2):
     if not (input_alpha2 is None and input_alpha2 != ""):
         alpha2_code = sorted([input_alpha2.upper()])
     
-    #if no input parameters set then return all country updates (all_iso3166_updates)
+    #if no input parameter set then return all country updates (all_iso3166_updates)
     if (alpha2_code == []):
         return jsonify(all_iso3166_updates), 200
     
-    #validate alpha-2 codes, remove any invalid ones, raise error if invalid alpha-3 codes input
+    #validate alpha-2 codes, remove any invalid ones, raise error if invalid alpha-2 or alpha-3 codes input
     if (alpha2_code != []):
         if (',' in alpha2_code[0]):
             alpha2_code = alpha2_code[0].split(',')
@@ -281,18 +209,15 @@ def api_alpha2(input_alpha2):
 @app.route('/api/year/<input_year>/alpha2', methods=['GET'])
 def api_year(input_year):
     """
-    Flask route for year path. Return all ISO 3166 updates
-    for the inputted year/years/year range or greater than 
-    or less than input year. If invalid year then return 
-    error. Route can accept the path with or without the 
-    trailing slash.
+    Flask route for year path. Return all ISO 3166 updates for the inputted year/years/year 
+    range or greater than or less than input year. If invalid year then return error. Route 
+    can accept the path with or without the trailing slash.
 
     Parameters
     ==========
     :input_year : string/list
-        year, list of years, or year range to get updates
-        from. Can also accept greater than or less than symbol
-        returning updates greater than/less than specified year.
+        year, list of years, or year range to get updates from. Can also accept greater than
+        or less than symbol, returning updates greater than/less than specified year.
 
     Returns 
     =======
@@ -301,8 +226,8 @@ def api_year(input_year):
     :blob_not_found_error_message : dict 
         error message if issue finding updates object json in storage bucket.
     :status_code : int
-        response status code. 200 is a successful response, 400 means there was an 
-        invalid parameter input.
+        response status code. 200 is a successful response, 400 means there was an invalid 
+        parameter input.
     """
     #initialise vars
     iso3166_updates = {}
@@ -344,9 +269,9 @@ def api_year(input_year):
                 year = []
                 year_range = False
         elif (',' in year[0]):
-            #split years into multiple years, if multiple are input, seperated by comma
+            #split years into comma seperated list of multiple years if multiple years are input
             year = year[0].split(',')
-        #parse array for using greater than symbol
+        #parse array if using greater than symbol
         elif ('>' in year[0]):
             year = year[0].split('>')
             greater_than = True
@@ -355,7 +280,7 @@ def api_year(input_year):
             if (len(year) > 1):
                 year = []
                 greater_than = False
-        #parse array for using less than symbol
+        #parse array if using less than symbol
         elif ('<' in year[0]):
             year = year[0].split('<')
             less_than = True
@@ -552,9 +477,9 @@ def api_alpha2_year(input_alpha2, input_year):
                 year = []
                 year_range = False
         elif (',' in year[0]):
-            #split years into multiple years, if multiple are input seperated by comma
+            #split years into comma seperated list of multiple years if multiple years are input
             year = year[0].split(',')
-        #parse array for using greater than symbol
+        #parse array if using greater than symbol
         elif ('>' in year[0]):
             year = year[0].split('>')
             greater_than = True
@@ -563,7 +488,7 @@ def api_alpha2_year(input_alpha2, input_year):
             if (len(year) > 1):
                 year = []
                 greater_than = False
-        #parse array for using less than symbol
+        #parse array if using less than symbol
         elif ('<' in year[0]):
             year = year[0].split('<')
             less_than = True
@@ -573,7 +498,7 @@ def api_alpha2_year(input_alpha2, input_year):
                 year = []
                 less_than = False
     
-    #iterate over all years, validate each are correct formar, raise error if invalid year
+    #iterate over all years, validate each are correct format, raise error if invalid year
     for year_ in year:
         #skip to next iteration if < or > symbol
         if (year_ == '<' or year_ == '>'):
@@ -622,7 +547,7 @@ def api_alpha2_year(input_alpha2, input_year):
                     if (temp_year != "" and (temp_year >= year[0] and temp_year <= year[1])):
                         temp_iso3166_updates[code].append(input_data[code][update])
                 
-                #if greater than true then get country updates greater than specified year, inclusive
+                #if greater than true then get country updates greater than or equal to specified year
                 elif (greater_than):
                     if (temp_year != "" and (temp_year >= year[0])):
                         temp_iso3166_updates[code].append(input_data[code][update])    
@@ -642,7 +567,7 @@ def api_alpha2_year(input_alpha2, input_year):
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
     else:
-        temp_iso3166_updates = input_data #return updates data when Years and Month params are empty
+        temp_iso3166_updates = input_data
     
     #set main updates dict to temp one
     iso3166_updates = temp_iso3166_updates
@@ -657,21 +582,19 @@ def api_alpha2_year(input_alpha2, input_year):
 @app.route('/api/name/<input_name>/year/<input_year>/', methods=['GET'])
 def api_name_year(input_name, input_year):
     """
-    Flask route for name + year path. Return all ISO 3166 updates
-    for the inputted country name/names + year/years/year range or 
-    greater than or less than input year. If invalid name or year/years 
-    input then return error. Route can accept the path with or without 
+    Flask route for name + year path. Return all ISO 3166 updates for the inputted country 
+    name/names + year/years/year range or greater than or less than input year. If invalid 
+    name or year/years input then return error. Route can accept the path with or without 
     the trailing slash.
     
     Parameters
     ==========
     :input_name : string/list
-        1 or more country names as they are most commonly known in English,
-        according to the ISO 3166-1.
+        1 or more country names as they are most commonly known in English, according to the 
+        ISO 3166-1.
     :input_year : string/list
-        year, list of years, or year range to get updates
-        from. Can also accept greater than or less than symbol
-        returning updates greater than/less than specified year.
+        year, list of years, or year range to get updates from. Can also accept greater than 
+        or less than symbol, returning updates greater than/less than specified year.
 
     Returns 
     =======
@@ -680,8 +603,8 @@ def api_name_year(input_name, input_year):
     :blob_not_found_error_message : dict 
         error message if issue finding updates object json in storage bucket.
     :status_code : int
-        response status code. 200 is a successful response, 400 means there was an 
-        invalid parameter input.
+        response status code. 200 is a successful response, 400 means there was an invalid 
+        parameter input.
     """
     #initialise vars
     iso3166_updates = {}
@@ -767,9 +690,9 @@ def api_name_year(input_name, input_year):
                 year = []
                 year_range = False
         elif (',' in year[0]):
-            #split years into multiple years, if multiple are input seperated by comma
+            #split years into comma seperated list of multiple years if multiple years are input
             year = year[0].split(',')
-        #parse array for using greater than symbol
+        #parse array if using greater than symbol
         elif ('>' in year[0]):
             year = year[0].split('>')
             greater_than = True
@@ -778,7 +701,7 @@ def api_name_year(input_name, input_year):
             if (len(year) > 1):
                 year = []
                 greater_than = False
-        #parse array for using less than symbol
+        #parse array if using less than symbol
         elif ('<' in year[0]):
             year = year[0].split('<')
             less_than = True
@@ -832,7 +755,7 @@ def api_name_year(input_name, input_year):
                 else:
                     temp_year = str(datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
 
-                #if year range true then get country updates within specified range inclusive
+                #if year range true then get country updates within specified range, inclusive
                 if (year_range):
                     if (temp_year != "" and (temp_year >= year[0] and temp_year <= year[1])):
                         temp_iso3166_updates[code].append(input_data[code][update])
@@ -857,7 +780,7 @@ def api_name_year(input_name, input_year):
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
     else:
-        temp_iso3166_updates = input_data #return updates data when Years and Month params are empty
+        temp_iso3166_updates = input_data
     
     #set main updates dict to temp one
     iso3166_updates = temp_iso3166_updates
@@ -870,11 +793,9 @@ def api_name_year(input_name, input_year):
 @app.route('/api/months/<input_month>/', methods=['GET'])
 def api_month(input_month):
     """
-    Flask route for month path. Return all ISO 3166 updates
-    for the previous number of months specified by month
-    parameter. If invalid month input then return error. 
-    Route can accept the path with or without the trailing 
-    slash.
+    Flask route for month path. Return all ISO 3166 updates for the previous number of 
+    months specified by month parameter. If invalid month input then return error. 
+    Route can accept the path with or without the trailing slash.
 
     Parameters
     ==========
@@ -888,8 +809,8 @@ def api_month(input_month):
     :blob_not_found_error_message : dict 
         error message if issue finding updates object json in storage bucket.  
     :status_code : int
-        response status code. 200 is a successful response, 400 means there was an 
-        invalid parameter input.
+        response status code. 200 is a successful response, 400 means there was an invalid 
+        parameter input.
     """
     #initialise vars
     months = []
@@ -921,7 +842,7 @@ def api_month(input_month):
     input_alpha2_codes = list(iso3166.countries_by_alpha2.keys())
     input_data = all_iso3166_updates
 
-    #remove XK (Kosovo) from list if applicable
+    #remove XK (Kosovo) from list, if applicable
     if ("XK" in input_alpha2_codes):
         input_alpha2_codes.remove("XK")
     
@@ -957,7 +878,7 @@ def api_month(input_month):
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
     else:
-        temp_iso3166_updates = input_data #return updates data when Years and Month params are 
+        temp_iso3166_updates = input_data
     
     #set main updates dict to temp one
     iso3166_updates = temp_iso3166_updates
@@ -970,10 +891,9 @@ def api_month(input_month):
 @app.route('/api/name/<input_name>/', methods=['GET'])
 def api_name(input_name):
     """
-    Flask route for name path. Return all ISO 3166 updates
-    for the inputted country name/names. If invalid name then 
-    return error. Route can accept the path with or without the 
-    trailing slash.
+    Flask route for name path. Return all ISO 3166 updates for the inputted country 
+    name/names. If invalid name then return error. Route can accept the path with 
+    or without the trailing slash.
 
     Parameters
     ==========
@@ -1053,9 +973,12 @@ def api_name(input_name):
 
     return jsonify(iso3166_updates_), 200
 
-#path can accept multiple country names, seperated by a comma but several
-#countries contain a comma already in their name. Seperate multiple country names
-#by a comma, cast to a sorted list, unless any of the names are in the below list
+'''
+path can accept multiple country names, seperated by a comma but several
+countries contain a comma already in their name in the iso3166 package. 
+Seperate multiple country namesby a comma, cast to a sorted list, unless 
+any of the names are in the below list
+'''
 name_comma_exceptions = ["BOLIVIA, PLURINATIONAL STATE OF",
                 "BONAIRE, SINT EUSTATIUS AND SABA",
                 "CONGO, DEMOCRATIC REPUBLIC OF THE",
@@ -1117,8 +1040,7 @@ def convert_to_alpha2(alpha3_code):
 @app.errorhandler(404)
 def not_found(e):
     """
-    Return html template for 404.html when page/path not found in 
-    Flask app.
+    Return html template for 404.html when page/path not found in Flask app.
 
     Parameters
     ==========
@@ -1127,18 +1049,12 @@ def not_found(e):
 
     Returns
     =======
-    :render_template : html
-      Flask html template for error.html page.
+    :flask.render_template : html
+      Flask html template for 404.html page.
     :status_code : int
         response status code. 404 code implies page not found.
     """
-    error_message_ = ""
-    if not ("api" in request.path):
-        error_message_ = "Path " + request.path + f" should have the /api path prefix in it:\n{e}" 
-    else:
-        error_message_ = "ISO 3166 Updates: Page not found: " + request.path + "\n{e}"
-
-    return render_template("404.html", path=error_message_), 404
+    return render_template("404.html", path=request.url), 404
 
 if __name__ == '__main__':
     #run flask app

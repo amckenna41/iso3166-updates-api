@@ -1,6 +1,5 @@
-/old
-LICENSE
+#exclude the below files and folders from vercel deployment
 ToDo.md
-/venv
-/tests
-/.github
+tests
+.github
+.gitignore
