@@ -40,5 +40,5 @@
 - [X] In await.fetch, need to change "" to ``.
 - [X] Copy API tests over to iso3166-updates.
 - [X] In api unit tests need to update requests calls, append to endpoint rather than query string params.
-- [ ] Read over demo notebook.
-- [ ] Update readme's.
+- [X] Read over demo notebook - update API examples.
+- [X] Update readme's.

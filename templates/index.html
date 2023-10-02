@@ -56,6 +56,8 @@
                 <li class="scroll-to-link" data-target="content-all" style="padding-left: 5%;"><a>All</a></li>
                 <li class="scroll-to-link" data-target="content-code" style="padding-left: 5%;"><a>Alpha-2 Code</a></li>
                 <li class="scroll-to-link" data-target="content-name" style="padding-left: 5%;"><a>Name</a></li>
+                <li class="scroll-to-link" data-target="content-year" style="padding-left: 5%;"><a>Year</a></li>
+                <li class="scroll-to-link" data-target="content-months" style="padding-left: 5%;"><a>Months</a></li>
                 <li class="scroll-to-link" data-target="content-credits"><a>Credits</a></li>
                 <li class="scroll-to-link" data-target="content-contributing"><a>Contributing</a></li>
             </ul>
@@ -97,7 +99,7 @@
             <div class="overflow-hidden content-section" id="content-endpoints">
                 <h2>Endpoints</h2>
                 <p>
-                    The ISO 3166 Updates API currently has the following 3 endpoints:
+                    The ISO 3166 Updates API currently has the following 5 endpoints:
                 </p>
                     <!-- html table outlining available endpoints -->
                     <table>
@@ -129,13 +131,43 @@
                                 is commonly known in English. A comma seperated list of country names can also be input.
                             </td>
                         </tr>
-                        </tbody>
+                        <tr>
+                            <td>https://iso3166-updates.com/api/year/{year}</td>
+                            <td>
+                                Return all updates/changes to all countries/territories and their subdivision data and naming conventions for a particular year, list 
+                                of years, year range or all updates less than or greater than an input year.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>https://iso3166-updates.com/api/alpha2/{alpha2}/year/{year}</td>
+                            <td>
+                                Return all updates/changes to a country/territory and its subdivision data and naming conventions for input 2 letter alpha-2
+                                country code, for an input year, list of years, year range or all updates less than or greater than an input year. A comma 
+                                seperated list of country codes can also be input. For redundancy the 3 letter alpha-3 code can also be accepted as input.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>https://iso3166-updates.com/api/name/{name}/year/{year}</td>
+                            <td>
+                                Return all updates/changes to a country/territory and its subdivision data and naming conventions for input country name, as it 
+                                is commonly known in English, for an input year, list of years, year range or all updates less than or greater than an input year. 
+                                A comma seperated list of country names can also be input.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>https://iso3166-updates.com/api/months/{months}</td>
+                            <td>
+                                Return all updates/changes to all countries/territories and their subdivision data and naming conventions from an input number of months 
+                                from the present day, inclusive, e.g. /api/months/12 will return all updates for all countries from the past 12 months.
+                            </td>
+                        </tr>
+                    </tbody>
                     </table>
                 </div>
 
             <!-- All endpoint section -->
             <div class="overflow-hidden content-section" id="content-all">
-                <h1>all</h1>
+                <h1>All</h1>
                 <p>
                     The /all endpoint returns all updates/changes data for all countries/territories in the ISO 3166. The list of countries supported is according 
                     to the <a href="https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes">ISO 3166-1 standard</a>. <br>
@@ -146,10 +178,11 @@
 
             <!-- Alpha-2 code endpoint section -->
             <div class="overflow-hidden content-section" id="content-code">
-                <h1>alpha-2</h1>
+                <h1>Alpha-2</h1>
                 <p>
                     The /alpha2 endpoint returns all updates/changes to a country/territory and its subdivision data and naming conventions for an input 2 letter alpha-2
-                    country code. A comma seperated list of country codes can also be input. For redundancy the 3 letter alpha-3 code can also be accepted as input. <br><br>
+                    country code. A comma seperated list of country codes can also be input. For redundancy the 3 letter alpha-3 code can also be accepted as input. This
+                    endpoint can also be used in conjunction with the /api/year and /api/months endpoints. <br><br>
                     <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha2/{alpha2}</code>
                     <button style="cursor: pointer;" id="copy-text-btn3" data-api-url="https://iso3166-updates.com/api/alpha2/{alpha2}"><i class="fa fa-clone"></i></button> <br><br>
                     <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha2/AD</code> <br>
@@ -160,15 +193,47 @@
 
             <!-- Name endpoint section -->
             <div class="overflow-hidden content-section" id="content-name">
-                <h1>name</h1>
+                <h1>Name</h1>
                 <p>
                     The /name endpoint returns all updates/changes to a country/territory and its subdivision data and naming conventions for an input country name, as it 
-                    is commonly known in English. A comma seperated list of country names can also be input. <br> <br>
+                    is commonly known in English. A comma seperated list of country names can also be input. This endpoint can also be used in conjunction with the 
+                    /api/year and /api/months endpoints.<br> <br>
                     <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/name/{name}</code> 
                     <button style="cursor: pointer;" id="copy-text-btn4" data-api-url="https://iso3166-updates.com/api/name/{name}"><i class="fa fa-clone"></i></button> <br><br>
                     <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/name/Ireland</code> <br>
                     <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/name/Jamaica</code> <br>
                     <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/name/Panama,Rwanda,Zambia</code> 
+                </p>
+            </div>
+
+            <!-- Year endpoint section -->
+            <div class="overflow-hidden content-section" id="content-year">
+                <h1>Year</h1>
+                <p>
+                    The /year endpoint returns all updates/changes to all countries/territories and their subdivision data and naming conventions for a particular year, list 
+                    of years, year range or all updates less than or greater than an input year. This endpoint can also be used in conjunction with the /api/alpha2 and 
+                    /api/name endpoints.<br> <br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/{year}</code> 
+                    <button style="cursor: pointer;" id="copy-text-btn5" data-api-url="https://iso3166-updates.com/api/year/{year}"><i class="fa fa-clone"></i></button> <br><br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/2014</code> <br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/2007,2011,2022</code> <br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/2000-2005</code> <br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/<2021</code> 
+                </p>
+            </div>
+
+            <!-- Months endpoint section -->
+            <div class="overflow-hidden content-section" id="content-months">
+                <h1>Months</h1>
+                <p>
+                    The /months endpoint returns all updates/changes to all countries/territories and their subdivision data and naming conventions from an input number of months 
+                    from the present day, inclusive, e.g. /api/months/12 will return all updates for all countries from the past 12 months. This endpoint can also be used in 
+                    conjunction with the /api/alpha2 and /api/name endpoints. <br> <br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/{months}</code> 
+                    <button style="cursor: pointer;" id="copy-text-btn6" data-api-url="https://iso3166-updates.com/api/months/{months}"><i class="fa fa-clone"></i></button> <br><br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/12</code> <br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/24</code> <br>
+
                 </p>
             </div>
 
