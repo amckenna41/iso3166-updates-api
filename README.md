@@ -38,7 +38,7 @@ The ISO 3166-1 was first published in 1974 and currently comprises 249 countries
 
 ### Problem Statement:
 
-The ISO is a very dynamic organisation and regularly change/update/remove entries within its library of standards, including the ISO 3166. Additions/changes/deletions to country/territorial codes occur less often in the ISO 3166-1, but changes are more frequent for the ISO 3166-2 codes due to there being thousands more entries, thus it can be difficult to keep up with and track these changes. These changes can occur for a variety of geopolitical and bureaucratic reasons and are usually communicated via Newsletters on the ISO platform, their Online Browsing Platform (OBP), or via a database, which usually costs money to subscribe to [[3]](#references). Usually these updates are conveyed at the end of the year, with amendments and updates occasionally published at various times throughout the year [[4]](#references). 
+The ISO is a very dynamic organisation and regularly change/update/remove entries within its library of standards, including the ISO 3166. Additions/changes/deletions to country/territorial codes occur less often in the ISO 3166-1, but changes are more frequent for the ISO 3166-2 codes due to there being thousands more entries, thus it can be difficult to keep up with and track these changes. These changes can occur for a variety of geopolitical and administrative reasons and were previously communicated via newsletters; but as of July 2013 these changes are now communicated via their online catalogue/Online Browsing Platform (OBP), or via a database, which usually costs money to subscribe to [[3]](#references). Usually these updates are conveyed at the end of the year, with amendments and updates occasionally published at various times throughout the year [[4]](#references). 
 
 The [`iso3166-updates`](https://github.com/amckenna41/iso3166-updates) software and accompanying API make it extremely easy to check for any new or historic updates to a country or set of country's ISO 3166-2 codes for free; with an easy-to-use interface and Python package and API, ensuring that you get the most up-to-date and accurate ISO 3166-2 codes and naming conventions.
 
@@ -81,10 +81,10 @@ The API was hosted and built using GCP, with a Cloud Function being used in the 
 
 The full list of attributes available for each country are:
 
-* Edition/Newsletter: Name and or edition of newsletter that the ISO 3166-2 change/update was communicated in.
-* Date Issued: Date that the change was communicated.
-* Code/Subdivision change: Overall summary of change/update made.
-* Description of change in newsletter: More in-depth info about the change/update that was made.
+* Edition/Newsletter: name and or edition of newsletter that the ISO 3166-2 change/update was communicated in.
+* Date Issued: date that the change was communicated.
+* Code/Subdivision change: overall summary of change/update made.
+* Description of change in newsletter: more in-depth info about the change/update that was made, including any remarks listed on the official ISO page.
 
 The API documentation and usage with all useful commands and examples to the API is available below. A demo of the software and API are available [here][demo_iso3166_updates].
 

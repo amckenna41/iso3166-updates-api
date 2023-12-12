@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify, redirect, url_for
+from flask import Flask, request, render_template, jsonify
 from google.cloud import storage
 from google.oauth2 import service_account
 import json 
@@ -54,7 +54,8 @@ error_message["status"] = 400
 def home():
     """
     Default route for https://iso3166-updates.com. Main homepage for API displaying the 
-    purpose of API and its documentation. 
+    purpose of API and its documentation. Route can accept path with or without 
+    trailing slash.
 
     Parameters
     ==========
@@ -62,7 +63,7 @@ def home():
 
     Returns
     =======
-    :flask.render_template : html
+    :flask.render_template: html
       Flask html template for index.html page.
     """
     return render_template('index.html')
@@ -90,9 +91,9 @@ def all():
 
     Returns
     =======
-    :jsonify(all_iso3166_2) : json
+    :jsonify(all_iso3166_2): json
         jsonified ISO 3166-2 data.
-    :status_code : int
+    :status_code: int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input. 
     """  
@@ -118,17 +119,17 @@ def api_alpha2(input_alpha2):
 
     Parameters
     ==========
-    :input_alpha2 : string/list
+    :input_alpha2: string/list
         1 or more 2 letter alpha-2 country codes according to theISO 3166-1. Can also accept the 3 
         letter alpha-3 code counterparts for each of the alpha-2 codes.
 
     Returns 
     =======
-    :iso3166_updates : json
+    :iso3166_updates: json
         jsonified response of iso3166 updates per input alpha-2 code.
-    :blob_not_found_error_message : dict 
+    :blob_not_found_error_message: dict 
         error message if issue finding updates object json.  
-    :status_code : int
+    :status_code: int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
     """
@@ -215,17 +216,17 @@ def api_year(input_year):
 
     Parameters
     ==========
-    :input_year : string/list
+    :input_year: string/list
         year, list of years, or year range to get updates from. Can also accept greater than
         or less than symbol, returning updates greater than/less than specified year.
 
     Returns 
     =======
-    :iso3166_updates : json
+    :iso3166_updates: json
         jsonified response of iso3166 updates per input year/years.
-    :blob_not_found_error_message : dict 
+    :blob_not_found_error_message: dict 
         error message if issue finding updates object json in storage bucket.
-    :status_code : int
+    :status_code: int
         response status code. 200 is a successful response, 400 means there was an invalid 
         parameter input.
     """
@@ -375,22 +376,22 @@ def api_alpha2_year(input_alpha2, input_year):
     
     Parameters
     ==========
-    :input_alpha2 : string/list
+    :input_alpha2: string/list
         1 or more 2 letter alpha-2 country codes according to ISO 3166-1.
         Can also accept the 3 letter alpha-3 counterpart for each alpha-2
         code.
-    :input_year : string/list
+    :input_year: string/list
         year, list of years, or year range to get updates
         from. Can also accept greater than or less than symbol
         returning updates greater than/less than specified year.
 
     Returns 
     =======
-    :iso3166_updates : json
+    :iso3166_updates: json
         jsonified response of iso3166 updates per input alpha-2 code and year.
-    :blob_not_found_error_message : dict 
+    :blob_not_found_error_message: dict 
         error message if issue finding updates object json in storage bucket.
-    :status_code : int
+    :status_code: int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
     """
@@ -589,20 +590,20 @@ def api_name_year(input_name, input_year):
     
     Parameters
     ==========
-    :input_name : string/list
+    :input_name: string/list
         1 or more country names as they are most commonly known in English, according to the 
         ISO 3166-1.
-    :input_year : string/list
+    :input_year: string/list
         year, list of years, or year range to get updates from. Can also accept greater than 
         or less than symbol, returning updates greater than/less than specified year.
 
     Returns 
     =======
-    :iso3166_updates : json
+    :iso3166_updates: json
         jsonified response of iso3166 updates per input country name and year.
-    :blob_not_found_error_message : dict 
+    :blob_not_found_error_message: dict 
         error message if issue finding updates object json in storage bucket.
-    :status_code : int
+    :status_code: int
         response status code. 200 is a successful response, 400 means there was an invalid 
         parameter input.
     """
@@ -799,16 +800,16 @@ def api_month(input_month):
 
     Parameters
     ==========
-    :input_month : string/list
+    :input_month: string/list
         number of past months to get published updates from, inclusive.
 
     Returns 
     =======
-    :iso3166_updates : json
+    :iso3166_updates: json
         jsonified response of iso3166 updates per input month.
-    :blob_not_found_error_message : dict 
+    :blob_not_found_error_message: dict 
         error message if issue finding updates object json in storage bucket.  
-    :status_code : int
+    :status_code: int
         response status code. 200 is a successful response, 400 means there was an invalid 
         parameter input.
     """
@@ -897,16 +898,16 @@ def api_name(input_name):
 
     Parameters
     ==========
-    :input_name : string/list
+    :input_name: string/list
         one or more country names as they are commmonly known in english.
 
     Returns 
     =======
-    :iso3166_updates : json
+    :iso3166_updates: json
         jsonified response of iso3166 updates per country name/names.
-    :blob_not_found_error_message : dict 
+    :blob_not_found_error_message: dict 
         error message if issue finding updates object json in storage bucket.
-    :status_code : int
+    :status_code: int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
     """
@@ -1044,14 +1045,14 @@ def not_found(e):
 
     Parameters
     ==========
-    :e : int
+    :e: int
         error code.
 
     Returns
     =======
-    :flask.render_template : html
+    :flask.render_template: html
       Flask html template for 404.html page.
-    :status_code : int
+    :status_code: int
         response status code. 404 code implies page not found.
     """
     return render_template("404.html", path=request.url), 404
