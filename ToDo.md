@@ -43,3 +43,4 @@
 - [X] Read over demo notebook - update API examples.
 - [X] Update readme's.
 - [X] ISO used to announce changes in newsletters which updated the currently valid standard, and releasing new editions which comprise a consolidation of newsletter changes. As of July 2013, changes are published in the online catalogue of ISO only and no newsletters are published anymore. Past newsletters remain available on the ISO website.
+- [X] Add readthedocs badge.

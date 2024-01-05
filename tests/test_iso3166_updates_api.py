@@ -43,22 +43,20 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
         self.base_url = "https://iso3166-updates.com/api" 
 
         self.__version__ = metadata('iso3166_updates')['version']
-
+        self.user_agent_header = {'User-Agent': 'iso3166-updates/{} ({}; {})'.format(self.__version__,
+                                       'https://github.com/amckenna41/iso3166-updates', getpass.getuser())}
         self.alpha2_base_url = self.base_url + "/alpha2/"
         self.year_base_url = self.base_url + '/year/'
         self.name_base_url = self.base_url + '/name/'
         self.all_base_url = self.base_url + '/all'
         self.month_base_url = self.base_url + '/month/'
-        self.user_agent_header = {'User-Agent': 'iso3166-updates/{} ({}; {})'.format(self.__version__,
-                                       'https://github.com/amckenna41/iso3166-updates', getpass.getuser())}
-    
+
         #correct column/key names for dict returned from api
         self.expected_output_columns = ["Code/Subdivision Change", "Date Issued", "Description of Change in Newsletter", "Edition/Newsletter"]
 
         #turn off tqdm progress bar functionality when running tests
         os.environ["TQDM_DISABLE"] = "1"
-        
-    @unittest.skip("")
+
     def test_homepage_endpoint(self):
         """ Testing contents of main "/api" endpoint that returns the homepage and API documentation. """
         test_request_main = requests.get(self.base_url, headers=self.user_agent_header)

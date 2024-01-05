@@ -5,8 +5,10 @@ on:
   push:
     branches: [ main ]
     paths-ignore: 
-      - '**/README.md'
+      - '**/.md'
       - 'docs/**/*'
+      - LICENSE
+      - .gitignore
   pull_request:
     branches: [ main ]
 
@@ -18,6 +20,7 @@ jobs:
   # test job, waits for build job to complete
   test:
     name: Setup environment
+    timeout-minutes: 15
     runs-on: ubuntu-latest        
     strategy:
       matrix:
