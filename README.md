@@ -20,19 +20,18 @@ The main API homepage and documentation is available via the URL:
 
 > https://iso3166-updates.com/api
 
-## Table of Contents
-- [iso3166-updates-api 🌎](#iso3166-updates-api-)
-  - [Table of Contents](#table-of-contents)
-  - [Introduction](#introduction)
-    - [Problem Statement](#problem-statement)
-    - [Intended Audience](#intended-audience)
-  - [Usage](#usage)
-  - [Staying up to date](#staying-up-to-date)
-  - [Requirements](#requirements)
-  - [Issues](#issues)
-  - [Contact](#contact)
-  - [References](#references)
-  - [Support](#support)
+Tabel of Contents
+-----------------
+- [Introduction](#introduction)
+  - [Problem Statement](#problem-statement)
+  - [Intended Audience](#intended-audience)
+- [Usage](#usage)
+- [Staying up to date](#staying-up-to-date)
+- [Requirements](#requirements)
+- [Issues](#issues)
+- [Contact](#contact)
+- [References](#references)
+- [Support](#support)
 
 Introduction
 ------------
