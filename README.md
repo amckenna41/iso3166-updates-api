@@ -20,13 +20,12 @@ The main API homepage and documentation is available via the URL:
 
 > https://iso3166-updates.com/api
 
-Table of Contents
------------------
+## Table of Contents
 - [iso3166-updates-api 🌎](#iso3166-updates-api-)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
-    - [Problem Statement:](#problem-statement)
-    - [Intended Audience:](#intended-audience)
+    - [Problem Statement](#problem-statement)
+    - [Intended Audience](#intended-audience)
   - [Usage](#usage)
   - [Staying up to date](#staying-up-to-date)
   - [Requirements](#requirements)
@@ -43,7 +42,7 @@ This repo forms the front-end of the API created for the [`iso3166-updates`](htt
 
 The ISO 3166-1 was first published in 1974 and currently comprises 249 countries, 193 of which are sovereign states that are members of the United Nations 🇺🇳 [[1]](#references). The ISO 3166-2 was first published in 1998 and as of November 2023 there are 5,039 codes defined in it [[2]](#references).
 
-### Problem Statement:
+### Problem Statement
 
 The ISO is a very dynamic organisation and regularly change/update/remove entries within its library of standards, including the ISO 3166. Additions/changes/deletions to country/territorial codes occur less often in the ISO 3166-1, but changes are more frequent for the ISO 3166-2 codes due to there being thousands more entries, thus it can be difficult to keep up with and track these changes. These changes can occur for a variety of geopolitical and administrative reasons. Previously these changes were communicated via newsletters; but as of July 2013 these changes are now communicated via their online catalogue/Online Browsing Platform (OBP), or via a database, which usually costs money to subscribe to [[3]](#references). Usually these updates are conveyed at the end of the year, with amendments and updates occasionally published at various times throughout the year [[4]](#references). 
 
@@ -51,7 +50,7 @@ This software and accompanying API make it extremely easy to check for any new o
 
 <!-- <strong> The earliest date for any ISO 3166 updates is 2000-06-21, and the most recent is 2022-11-29. </strong> -->
 
-### Intended Audience:
+### Intended Audience
 
 This software and accompanying API is for anyone working with country data at the ISO 3166 level. It's of high importance that the data that you are working with is correct and up-to-date, especially with consistent changes being posted every year since 2000 (excluding 2001 and 2006). Also, it's aimed not just at developers of ISO 3166 applications but for anyone working in that space, hence the creation of an easy-to-use API and frontend (https://iso3166-updates.com). 
 
