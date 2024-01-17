@@ -22,13 +22,18 @@ The main API homepage and documentation is available via the URL:
 
 Table of Contents
 -----------------
-  * [Introduction](#introduction)
-  * [Usage](#usage)
-  * [Staying up to date](#staying-up-to-date)
-  * [Requirements](#requirements)
-  * [Issues](#Issues)
-  * [Contact](#contact)
-  * [References](#references)
+- [iso3166-updates-api 🌎](#iso3166-updates-api-)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+    - [Problem Statement:](#problem-statement)
+    - [Intended Audience:](#intended-audience)
+  - [Usage](#usage)
+  - [Staying up to date](#staying-up-to-date)
+  - [Requirements](#requirements)
+  - [Issues](#issues)
+  - [Contact](#contact)
+  - [References](#references)
+  - [Support](#support)
 
 Introduction
 ------------
@@ -108,10 +113,8 @@ Requirements
 * [flask][flask] >= 2.3.2
 * [requests][requests] >= 2.28.1
 * [iso3166][iso3166] >= 2.1.1
+* [iso3166-updates][iso3166_updates] >= 1.6.0
 * [python-dateutil][python-dateutil] >= 2.8.2
-* [google-auth][google-auth] >= 2.17.3
-* [google-cloud-storage][google-cloud-storage] >= 2.8.0
-* [google-api-python-client][google-api-python-client] >= 2.86.0
 
 Issues
 ------
@@ -142,6 +145,7 @@ Support
 [python]: https://www.python.org/downloads/release/python-360/
 [requests]: https://requests.readthedocs.io/
 [iso3166]: https://github.com/deactivated/python-iso3166
+[iso3166_updates]: https://github.com/amckenna41/iso3166-updates
 [python-dateutil]: https://pypi.org/project/python-dateutil/
 [google-auth]: https://cloud.google.com/python/docs/reference
 [google-cloud-storage]: https://cloud.google.com/python/docs/reference

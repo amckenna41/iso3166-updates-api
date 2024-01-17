@@ -309,12 +309,12 @@ pre{
     border-spacing: 0;
 }
 .content table tr:last-child {
-    border-bottom: 1px solid #ccc;
+    border-bottom: 2px solid #ccc;
 }
 .content table th {
     font-size: 0.925em;
     padding: 5px 18px 5px 0;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 2px solid #ccc;
     vertical-align: bottom;
     text-align: left;
     line-height: 1.6;
