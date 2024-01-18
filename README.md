@@ -16,6 +16,10 @@
 
 > Frontend API for the [`iso3166-updates`](https://github.com/amckenna41/iso3166-updates) repo that returns the latest updates/changes to the ISO 3166-1 and ISO 3166-2 country codes and naming conventions, as per the ISO 3166 newsletter (https://www.iso.org/iso-3166-country-codes.html) and Online Browsing Platform (OBP) (https://www.iso.org/obp/ui) 🌎. Built using the Python Flask framework and hosted on the Vercel platform. A demo of the API and Python software are available [here][demo_iso3166_updates].
 
+* A <b>demo</b> of the API is available [here][demo_iso3166_updates].
+* A <b>Medium</b> article that dives deeper into `iso3166-updates` is available [here][medium].
+* The **documentation** for the API is available [here](https://iso3166-updates.readthedocs.io/en/latest/).
+
 The main API homepage and documentation is available via the URL:
 
 > https://iso3166-updates.com/api
@@ -27,6 +31,7 @@ Tabel of Contents
   - [Intended Audience](#intended-audience)
 - [Usage](#usage)
 - [Staying up to date](#staying-up-to-date)
+- [Documentation](#documentation)
 - [Requirements](#requirements)
 - [Issues](#issues)
 - [Contact](#contact)
@@ -104,6 +109,10 @@ The object storing all updates, both locally (iso3166-updates.json) for the soft
 Additionally, a GitHub Issue in the custom-built [`iso3166-updates`](https://github.com/amckenna41/iso3166-updates), [`iso3166-2`](https://github.com/amckenna41/iso3166-2) and [`iso3166-flag-icons`](https://github.com/amckenna41/iso3166-flag-icons) repositories will be automatically created that formats and tabulates all updates/changes that need to be implemented into the JSONs on the aforementioned repos.
 
 Ultimately, this Cloud Run microservice ensures that the software and assoicated APIs are up-to-date with the latest and most accurate ISO 3166-2 information for all countries/territories/subdivisions etc.
+
+Documentation
+-------------
+Documentation for the API is available on the software's [readthedocs](https://iso3166-updates.readthedocs.io/en/latest/) page as well as the API's [homepage](https://iso3166-updates.com/api).
 
 Requirements
 ------------
