@@ -1,5 +1,24 @@
 
+let version = "";
+
+//make get request to pypi json endpoint to get the software's current version
+fetch("https://pypi.org/pypi/iso3166-updates/json")
+    .then(response => { 
+    if (!response.ok) { 
+        throw new Error("Error making GET request to PyPI server"); 
+    } 
+    return response.json();
+    })
+    .then(data => { 
+        version = data['info']['version']
+    })
+    .catch(error => { 
+        console.error("Error making GET request to PyPI server: ", error);});
+        
 window.onload = function(){ 
+
+    //set version to its element after page load
+    document.getElementById("version").innerHTML = "<b>Version: </b>" + version;
 
     //iterate over each menu section element, highlight it and scroll to it on page when hovered over & clicked
     [].forEach.call(document.querySelectorAll('.scroll-to-link'), function (div) {
@@ -111,18 +130,18 @@ window.onload = function(){
     });
     
     //iterate over all copy to clipboard buttons and create event listener that copies the API URL once clicked
-    let copyTextBtn1 = document.querySelector("#copy-text-btn1");
+    // let copyTextBtn1 = document.querySelector("#copy-text-btn1");
     let copyTextBtn2 = document.querySelector("#copy-text-btn2");
     let copyTextBtn3 = document.querySelector("#copy-text-btn3");
     let copyTextBtn4 = document.querySelector("#copy-text-btn4");
     let copyTextBtn5 = document.querySelector("#copy-text-btn5");
     let copyTextBtn6 = document.querySelector("#copy-text-btn6");
 
-    copyTextBtn1.addEventListener("click", function () {
-        let apiURL = copyTextBtn1.getAttribute('data-api-url')
-        navigator.clipboard.writeText(apiURL);
-        console.log('API URL copied to clipboard: ' + apiURL);
-    });
+    // copyTextBtn1.addEventListener("click", function () {
+    //     let apiURL = copyTextBtn1.getAttribute('data-api-url')
+    //     navigator.clipboard.writeText(apiURL);
+    //     console.log('API URL copied to clipboard: ' + apiURL);
+    // });
 
     copyTextBtn2.addEventListener("click", function () {
         let apiURL = copyTextBtn2.getAttribute('data-api-url')

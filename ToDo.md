@@ -47,3 +47,31 @@
 - [X] Remove gcp storage backend, just use software.
 - [X] Make example links clickable.
 - [X] Increase border-bottom to 1px to 2px.
+- [X] Remove additional app.routes for each endpoint with trailing slashes.
+- [X] Change /alpha2 endpoint to /alpha, allowing all iso3166-1 alpha codes to be input. Update unit tests, documentation and examples.
+- [X] Refer to iso3166-2 docs to help with docs for this.
+- [X] Update closeness function to thefuzz
+- [X] Update API error messages to include more info: message: "Invalid ISO 3166-1 alpha country code input, cannot convert into corresponding alpha-2 code: ZZ.".
+- [X] Parameter typing https://docs.python.org/3/library/typing.html
+- [X] Double check spelling using code-spell-checker extension
+- [X] Automatically split path string on comma by default, regardless if one is present or not in string.
+- [X] Update invalid year input error message.
+- [X] Create endpoint /months/{months}/alpha/{alpha}, where you can get all updates over the past X months for input alpha code.
+- [X] Add more examples index.html that combine the multiple endpoint paths.
+- [X] On index.html, copy button copies html tag not link.
+- [X] Remove '2 letter' and '3 letter' when referencing alpha-2 or alpha-3
+- [X] Change 'name' and 'alpha code' to 'country "" '
+- [X] Add unit tests for /months/alpha and /months/name endpoints.
+- [X] Update API.md and README.md for /months/alpha and /months/name endpoints.
+- [X] For year range function, if lesser number is on right or left of '-', it should still return the year range updates.
+- [X] Ensure that if no parameter value provided for some of the endpoints that a specific error is returned, rather than returning all of the data.
+- [X] reorder app.routes to be more consistent.
+- [X] In headers/titles of api.md examples, include alpha code as well as name?
+- [X] Remove /months/name endpoint.
+- [X] Read over unit tests.
+- [X] https://iso3166-updates-frontend-amckenna41.vercel.app/api/year/<2002 - not including updates from year 2000. 
+- [X] In sw and API, should less than functionality include the year to get less than?
+- [X] /alpha + /year endpoint not working, returning all updates data.
+- [X] When looking for name matches using thefuzz, data objects may still be returned even though their likeness score is <50 etc. Add validation such that score has to be above 75.
+- [X] For name endpoints, do we need to title().
+- [X] Tests validating that date issued is within specific time frame not working.
