@@ -859,12 +859,12 @@ def api_months(input_month: str="") -> tuple[dict, int]:
 
             #parse parameter to get range of months to get updates from
             if ('-' in input_month):
-                start_month, end_month = input_month.split('-')[0], input_month.split('-')[1]
+                start_month, end_month = int(input_month.split('-')[0]), int(input_month.split('-')[1])
                 #if months in month range input are wrong way around then swap them
                 if (start_month > end_month):
                     start_month, end_month = end_month, start_month
                 #if current updates row is >= start month input param and <= end month then add to temp object
-                if ((diff_months >= int(start_month)) and (diff_months <= int(end_month))):
+                if ((diff_months >= start_month) and (diff_months <= end_month)):
                     temp_iso3166_updates[code].append(all_iso3166_updates[code][update])
             else:
                 #if current updates row is <= month input param then add to temp object
@@ -976,12 +976,12 @@ def api_months_alpha(input_month: str="", input_alpha: str="") -> tuple[dict, in
 
             #parse parameter to get range of months to get updates from
             if ('-' in input_month):
-                start_month, end_month = input_month.split('-')[0], input_month.split('-')[1]
+                start_month, end_month = int(input_month.split('-')[0]), int(input_month.split('-')[1])
                 #if months in month range input are wrong way around then swap them
                 if (start_month > end_month):
                     start_month, end_month = end_month, start_month
                 #if current updates row is >= start month input param and <= end month then add to temp object
-                if ((diff_months >= int(start_month)) and (diff_months <= int(end_month))):
+                if ((diff_months >= start_month) and (diff_months <= end_month)):
                     temp_iso3166_updates[code].append(iso3166_updates[code][update])
             else:
                 #if current updates row is <= month input param then add to temp object

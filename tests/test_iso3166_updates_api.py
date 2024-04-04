@@ -921,7 +921,7 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
         self.assertEqual(test_request_error_3["status"], 400, "Error status code incorrect: {}.".format(test_request_error_3["status"]))
         self.assertEqual(test_request_error_3["path"], self.name_base_url + test_name_error3[0] + "/year/" + test_name_error3[1], "Error path incorrect: {}.".format(test_request_error_3["path"]))
 
-#     @unittest.skip("Skipping as number of results will change month by month of running tests.")
+    @unittest.skip("Skipping as number of results will change month by month of running tests.")
     def test_months_endpoint(self):
         """ Testing '/api/months' paths/endpoint, which returns the updates in a specified month range. """
         test_month_1 = "1"
@@ -985,7 +985,7 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
         self.assertEqual(test_request_month6["status"], 400, "Error status code incorrect: {}.".format(test_request_month6["status"]))
         self.assertEqual(test_request_month6["path"], self.base_url + '/months/' + test_month_6, "Error path incorrect: {}.".format(test_request_month6["path"]))
 
-#     @unittest.skip("Skipping as number of results will change month by month of running tests.")
+    @unittest.skip("Skipping as number of results will change month by month of running tests.")
     def test_months_alpha_endpoint(self):
         """ Testing '/api/months' + '/api/alpha' paths/endpoint, which returns the updates in a specified month range for an input country per its ISO 3166 alpha code. """
         test_alpha_month_gb_24 = ("GB", "24") #UK
