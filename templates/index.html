@@ -75,7 +75,7 @@
                 <p> 
                     The ISO 3166 Updates API is a custom-built, open-source and free to use API for the <a href="https://github.com/amckenna41/iso3166-updates" target="_blank">iso3166-updates</a> repo 
                     that returns the latest and historical updates/changes to the ISO 3166-1 and ISO 3166-2 country codes and naming conventions, as per the ISO 3166 newsletter (https://www.iso.org/iso-3166-country-codes.html) 
-                    and Online Browsing Platform (OBP) (https://www.iso.org/obp/ui).<br><br>A demo of the API and Python software are available 
+                    and Online Browsing Platform (OBP) (https://www.iso.org/obp/ui).<br><br>A demo of the API and Python software is available 
                     <a href="https://colab.research.google.com/drive/1oGF3j3_9b_g2qAmBtv3n-xO2GzTYRJjf?usp=sharing" target="_blank">here</a>.  <br>Source code available 
                     <a href="https://github.com/amckenna41/iso3166-updates-api" target="_blank">here</a>. <br>
                     <!-- <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api</code> -->
@@ -159,7 +159,8 @@
                             <td>https://iso3166-updates.com/api/months/{input_months}</td>
                             <td>
                                 Return all updates/changes to all countries/territories and their subdivision data and naming conventions from the previous number of months 
-                                from the present day, inclusive, e.g. /api/months/12 will return all updates for all countries from the past 12 months.
+                                from the present day, inclusive, e.g. /api/months/12 will return all updates for all countries from the past 12 months. The endpoint can also
+                                accept a month range which will get all updates/changes that were published within the specified range, e.g. /api/months/12-36.
                             </td>
                         </tr>
                         <tr>
@@ -178,7 +179,7 @@
             <div class="overflow-hidden content-section" id="content-all">
                 <h1>All</h1>
                 <p>
-                    The /all endpoint returns all updates/changes data for all countries/territories in the ISO 3166. The list of countries supported is according 
+                    The /api/all endpoint returns all updates/changes data for all countries/territories in the ISO 3166. The list of countries supported is according 
                     to the <a href="https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes" target="_blank">ISO 3166-1 standard</a>. <br><br>
                     <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/all</code>
                     <button style="cursor: pointer;" id="copy-text-btn2" data-api-url="https://iso3166-updates.com/api/all"><i class="fa fa-clone"></i></button>
@@ -189,7 +190,7 @@
             <div class="overflow-hidden content-section" id="content-code">
                 <h1>Alpha</h1>
                 <p>
-                    The /alpha endpoint returns all updates/changes to a country/territory and its subdivision data and naming conventions for an input ISO 3166-1 alpha-2, 
+                    The /api/alpha endpoint returns all updates/changes to a country/territory and its subdivision data and naming conventions for an input ISO 3166-1 alpha-2, 
                     alpha-3 or numeric country code. A comma separated list of country codes can also be input. This endpoint can also be used in conjunction with the /api/year 
                     and /api/months endpoints. <br><br>
                     <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha/{input_alpha}</code>
@@ -209,7 +210,7 @@
             <div class="overflow-hidden content-section" id="content-name">
                 <h1>Name</h1>
                 <p>
-                    The /name endpoint returns all updates/changes to a country/territory and its subdivision data and naming conventions for an input country name, as it 
+                    The /api/name endpoint returns all updates/changes to a country/territory and its subdivision data and naming conventions for an input country name, as it 
                     is commonly known in English. A comma separated list of country names can also be input. This endpoint can also be used in conjunction with the 
                     /api/year and /api/months endpoints.<br> <br>
                     <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/name/{input_name}</code> 
@@ -226,7 +227,7 @@
             <div class="overflow-hidden content-section" id="content-year">
                 <h1>Year</h1>
                 <p>
-                    The /year endpoint returns all updates/changes to all countries/territories and their subdivision data and naming conventions for a particular year, list 
+                    The /api/year endpoint returns all updates/changes to all countries/territories and their subdivision data and naming conventions for a particular year, list 
                     of years, year range or all updates less than or greater than an input year. This endpoint can also be used in conjunction with the /api/alpha and 
                     /api/name endpoints.<br> <br>
                     <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/{input_year}</code> 
@@ -243,13 +244,14 @@
             <div class="overflow-hidden content-section" id="content-months">
                 <h1>Months</h1>
                 <p>
-                    The /months endpoint returns all updates/changes to all countries/territories and their subdivision data and naming conventions from an input number of months 
-                    from the present day, inclusive, e.g. /api/months/12 will return all updates for all countries from the past 12 months. This endpoint can also be used in 
-                    conjunction with the /api/alpha and /api/name endpoints. <br> <br>
+                    The /api/months endpoint returns all updates/changes to all countries/territories and their subdivision data and naming conventions from an input number of months 
+                    from the present day, inclusive, e.g. /api/months/12 will return all updates for all countries from the past 12 months. The endpoint can also accept a month range
+                    to get updates/changes from. The endpoint can also be used in conjunction with the /api/alpha and /api/name endpoints. <br> <br>
                     <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/{input_months}</code> 
                     <button style="cursor: pointer;" id="copy-text-btn6" data-api-url="https://iso3166-updates.com/api/months/{input_months}"><i class="fa fa-clone"></i></button> <br><br>
                     <a href="https://iso3166-updates.com/api/months/12" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/12</code></a> <br>
                     <a href="https://iso3166-updates.com/api/months/24" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/24</code></a> <br>
+                    <a href="https://iso3166-updates.com/api/months/6-24" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/6-24</code></a> <br>
                     <a href="https://iso3166-updates.com/api/months/6/alpha/FR" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/6/alpha/FR</code></a> <br>
                     <a href="https://iso3166-updates.com/api/months/60/alpha/DZA,MDA,POL" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/60/alpha/DZA,MDA,POL</code></a> 
                 </p>

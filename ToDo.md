@@ -75,3 +75,6 @@
 - [X] When looking for name matches using thefuzz, data objects may still be returned even though their likeness score is <50 etc. Add validation such that score has to be above 75.
 - [X] For name endpoints, do we need to title().
 - [X] Tests validating that date issued is within specific time frame not working.
+- [X] When searching for a specific country via its name, if closeness score is high enough, in the error message include "Did you mean {country}?"
+- [X] Include return type for parameter typed functions.
+- [X] In months functionality, add support for month range e.g /months/12-36, updates published over the past 12-36 months. Add unit tests, update API.md.

@@ -26,7 +26,7 @@ The paths/endpoints available in the API are - `/api/all`, `/api/alpha`, `/api/n
 
 * `/api/year`: get all the ISO 3166 updates/changes data for one or more countries according to a specific year, year range, or a cut-off year to get updates less than/more than a year, e.g. `/api/year/2017`, `/api/year/2010-2015`, `/api/year/<2009`, `/api/year/>2002`. If an invalid year is input then an error will be returned. This endpoint can be used in conjunction with the **alpha** and **name** endpoints to get the country updates for a specific country and year. This will be in in the format `/api/alpha/<input_alpha>/year/<input_year>` and `/api/name/<input_name>/year/<input_year>`, respectively. 
 
-* `/api/months`: get all the ISO 3166 updates/changes data for one or more countries from an input number of months from the present day, e.g. `/api/months/12`, `/api/months/24`, `/api/months/50`. If an invalid month value is input then an error will be returned. This endpoint can be used in conjunction with the **alpha** and **name** endpoints to get the country updates for a specific country over the past number of months using their ISO 3166-1 alpha code or country name, respectively. This will be in the format: `/api/months/<input_month>/alpha/<input_alpha>` and `/api/months/<input_month>/name/<input_name>`, respectively.
+* `/api/months`: get all the ISO 3166 updates/changes data for one or more countries from an input number of months from the present day, e.g. `/api/months/12`, `/api/months/24`, `/api/months/50`. A month range can also be input to get the updates published within a specified range of months, with the start and end month separated by a '-' e.g. `/api/months/12-24`, `/api/months/36-50`. If an invalid month value is input then an error will be returned. This endpoint can be used in conjunction with the **alpha** and **name** endpoints to get the country updates for a specific country over the past number of months using their ISO 3166-1 alpha code or country name, respectively. This will be in the format: `/api/months/<input_month>/alpha/<input_alpha>` and `/api/months/<input_month>/name/<input_name>`, respectively.
 
 * `/api`: main homepage and API documentation.
 
@@ -459,22 +459,10 @@ function getData() {
 // Begin accessing JSON data here
 var data = JSON.parse(this.response)
 ```
-Get all updates for all countries from the past 3 or 6 months
+
+Get all updates for all countries from the past 6 months
 -------------------------------------------------------------
 
-### Request
-`GET /api/months/3`
-
-    curl -i https://iso3166-updates.com/api/months/3
-
-### Response
-    HTTP/2 200 
-    Date: Thu, 06 Apr 2023 12:36:30 GMT
-    Connection: close
-    Content-Type: application/json
-    Content-Length: 3
-
-    {}
 ### Request
 `GET /api/months/6`
 
@@ -494,7 +482,7 @@ Get all updates for all countries from the past 3 or 6 months
 import requests
 
 base_url = "https://iso3166-updates.com/api/"
-input_month = "3" #6
+input_month = "6"
 
 request_url = base_url + f"months/{input_month}"
 
@@ -504,7 +492,51 @@ all_request.json()
 
 ### Javascript
 ```javascript
-let input_month = "3"; //6
+let input_month = "6"; 
+
+function getData() {
+  const response = 
+    await fetch(`https://iso3166-updates.com/api/months/${input_month}`);
+  const data = await response.json()
+}
+
+// Begin accessing JSON data here
+var data = JSON.parse(this.response)
+```
+
+Get all updates for all countries from the 12-36 months
+-------------------------------------------------------
+
+### Request
+`GET /api/months/12-36`
+
+    curl -i https://iso3166-updates.com/api/months/12-36
+
+### Response
+    HTTP/2 200 
+    Date: Thu, 07 Apr 2023 15:30:30 GMT
+    Connection: close
+    Content-Type: application/json
+    Content-Length: 1400
+
+    {{"CI":[{"Code/Subdivision Change":"",...}]}}
+
+### Python
+```python
+import requests
+
+base_url = "https://iso3166-updates.com/api/"
+input_month = "12-36"
+
+request_url = base_url + f"months/{input_month}"
+
+all_request = requests.get(request_url)
+all_request.json() 
+```
+
+### Javascript
+```javascript
+let input_month = "12-36"; 
 
 function getData() {
   const response = 

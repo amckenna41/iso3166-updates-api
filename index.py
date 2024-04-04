@@ -58,7 +58,7 @@ def home():
 
 @app.route('/api/all', methods=['GET'])
 @app.route('/all', methods=['GET'])
-def all():
+def all() -> tuple[dict, int]:
     """
     Flask route for '/api/all' path/endpoint. Return all ISO 3166-2 updates data for all 
     available countries. Route can accept path with or without trailing slash.
@@ -85,7 +85,7 @@ def all():
 @app.route('/alpha/<input_alpha>/year', methods=['GET'])
 @app.route('/alpha/<input_alpha>/months', methods=['GET'])
 @app.route('/alpha', methods=['GET'])
-def api_alpha(input_alpha: str=""):
+def api_alpha(input_alpha: str="") -> tuple[dict, int]:
     """
     Flask route for '/api/alpha' path/endpoint. Return all ISO 3166 updates for the inputted 
     ISO 3166-1 alpha-2, alpha-3 or numeric country code/codes. The alpha-3 and numeric codes will 
@@ -156,7 +156,7 @@ def api_alpha(input_alpha: str=""):
 @app.route('/year', methods=['GET'])
 @app.route('/year/<input_year>/alpha', methods=['GET'])
 @app.route('/year/<input_year>/name', methods=['GET'])
-def api_year(input_year: str=""):
+def api_year(input_year: str="") -> tuple[dict, int]:
     """
     Flask route for '/api/year' path/endpoint. Return all ISO 3166 updates for the inputted 
     year, list of years, year range or greater than or less than input year. If invalid year 
@@ -305,7 +305,7 @@ def api_year(input_year: str=""):
 @app.route('/api/year/<input_year>/alpha/<input_alpha>', methods=['GET'])
 @app.route('/api/alpha/<input_alpha>/year/<input_year>', methods=['GET'])
 @app.route('/year/<input_year>/alpha/<input_alpha>', methods=['GET'])
-def api_alpha_year(input_alpha: str="", input_year: str=""):
+def api_alpha_year(input_alpha: str="", input_year: str="") -> tuple[dict, int]:
     """
     Flask route for '/api/alpha' + '/api/year' path/endpoint. Return all ISO 3166 
     updates for the inputted ISO 3166-1 alpha-2, alpha-3 or numeric country code/codes 
@@ -493,7 +493,7 @@ def api_alpha_year(input_alpha: str="", input_year: str=""):
 @app.route('/name/<input_name>', methods=['GET'])
 @app.route('/name/<input_name>/year', methods=['GET'])
 @app.route('/name/<input_name>/months', methods=['GET'])
-def api_name(input_name: str=""):
+def api_name(input_name: str="") -> tuple[dict, int]:
     """
     Flask route for '/api/name' path/endpoint. Return all ISO 3166 updates for the 
     inputted country name/names. A closeness function is used to find the most 
@@ -560,10 +560,12 @@ def api_name(input_name: str=""):
             error_message["message"] = "No matching country name found for input: {}.".format(name_)
             return jsonify(error_message), 400
         elif (name_matches[0][1] <70):
-            #return error if country name not found
-            error_message["message"] = "No matching country name found for input: {}.".format(name_)
+            if (name_matches[0][1] >60):
+                #return error if country name not found
+                error_message["message"] = "No matching country name found for input: {}, did you mean {}?".format(name_, name_matches[0][0].title())
+            else:
+                error_message["message"] = "No matching country name found for input: {}.".format(name_)
             return jsonify(error_message), 400
-
 
         #use iso3166 package to find corresponding alpha-2 code from its name
         alpha2_code.append(iso3166.countries_by_name[name_matches[0][0].upper()].alpha2)
@@ -578,7 +580,7 @@ def api_name(input_name: str=""):
 @app.route('/api/name/<input_name>/year/<input_year>', methods=['GET'])
 @app.route('/year/<input_year>/name/<input_name>', methods=['GET'])
 @app.route('/name/<input_name>/year/<input_year>', methods=['GET'])
-def api_name_year(input_name: str="", input_year: str=""):
+def api_name_year(input_name: str="", input_year: str="") -> tuple[dict, int]:
     """
     Flask route for '/api/name' + '/api/year' path/endpoint. Return all ISO 3166 updates 
     for the inputted country name/names + year, list of years, year range or greater than 
@@ -659,10 +661,13 @@ def api_name_year(input_name: str="", input_year: str=""):
             error_message["message"] = "No matching country name found for input: {}.".format(name_)
             return jsonify(error_message), 400
         elif (name_matches[0][1] <70):
-            #return error if country name not found
-            error_message["message"] = "No matching country name found for input: {}.".format(name_)
+            if (name_matches[0][1] >60):
+                #return error if country name not found
+                error_message["message"] = "No matching country name found for input: {}, did you mean {}?".format(name_, name_matches[0][0].title())
+            else:
+                error_message["message"] = "No matching country name found for input: {}.".format(name_)
             return jsonify(error_message), 400
-
+        
         #use iso3166 package to find corresponding alpha-2 code from its name
         alpha2_code.append(iso3166.countries_by_name[name_matches[0][0].upper()].alpha2)
     
@@ -785,7 +790,7 @@ def api_name_year(input_name: str="", input_year: str=""):
 @app.route('/months/<input_month>/alpha', methods=['GET'])
 @app.route('/months/<input_month>/name', methods=['GET'])
 @app.route('/months', methods=['GET'])
-def api_month(input_month: str=""):
+def api_months(input_month: str="") -> tuple[dict, int]:
     """
     Flask route for '/api/months' path/endpoint. Return all ISO 3166 updates for 
     the previous number of months specified by month parameter. If invalid month 
@@ -813,12 +818,13 @@ def api_month(input_month: str=""):
         error_message["message"] = f"The month input parameter cannot be empty." 
         return jsonify(error_message), 400    
 
-    #return error if invalid month value input, otherwise convert str into int
-    if not (str(input_month).isdigit()):
-        error_message["message"] = f"Invalid month input: {''.join(input_month)}."
-        return jsonify(error_message), 400
-    else:
-        input_month = int(input_month)
+    #return error if invalid month value input, otherwise convert str into int, skip if month range input
+    if not ('-' in input_month):
+        if not (str(input_month).isdigit()):
+            error_message["message"] = f"Invalid month input: {''.join(input_month)}."
+            return jsonify(error_message), 400
+        # else:
+        #     input_month = int(input_month)
         
     #get current datetime object
     current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
@@ -828,7 +834,6 @@ def api_month(input_month: str=""):
 
     #get all alpha-2 codes from iso3166 and all updates data before filtering by month
     input_alpha_codes = list(iso3166.countries_by_alpha2.keys())
-    input_data = all_iso3166_updates
 
     #remove XK (Kosovo) from list, if applicable
     if ("XK" in input_alpha_codes):
@@ -837,14 +842,14 @@ def api_month(input_month: str=""):
     #filter out updates that are not within specified month range
     for code in input_alpha_codes:
         temp_iso3166_updates[code] = [] 
-        for update in range(0, len(input_data[code])):
+        for update in range(0, len(all_iso3166_updates[code])):
 
             #convert year in Date Issued column to date object, remove "corrected" date if applicable
-            if ("corrected" in input_data[code][update]["Date Issued"]):
-                row_date = datetime.strptime(re.sub("[(].*[)]", "", input_data[code][update]["Date Issued"]).replace(' ', "").
+            if ("corrected" in all_iso3166_updates[code][update]["Date Issued"]):
+                row_date = datetime.strptime(re.sub("[(].*[)]", "", all_iso3166_updates[code][update]["Date Issued"]).replace(' ', "").
                                                     replace(".", '').replace('\n', ''), '%Y-%m-%d')
             else:
-                row_date = datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d')
+                row_date = datetime.strptime(all_iso3166_updates[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d')
             
             #calculate difference in dates
             date_diff = relativedelta.relativedelta(current_datetime, row_date)
@@ -852,9 +857,19 @@ def api_month(input_month: str=""):
             #calculate months difference
             diff_months = date_diff.months + (date_diff.years * 12)
 
-            #if current updates row is <= month input param then add to temp object
-            if (diff_months <= input_month):
-                temp_iso3166_updates[code].append(input_data[code][update])
+            #parse parameter to get range of months to get updates from
+            if ('-' in input_month):
+                start_month, end_month = input_month.split('-')[0], input_month.split('-')[1]
+                #if months in month range input are wrong way around then swap them
+                if (start_month > end_month):
+                    start_month, end_month = end_month, start_month
+                #if current updates row is >= start month input param and <= end month then add to temp object
+                if ((diff_months >= int(start_month)) and (diff_months <= int(end_month))):
+                    temp_iso3166_updates[code].append(all_iso3166_updates[code][update])
+            else:
+                #if current updates row is <= month input param then add to temp object
+                if (diff_months <= int(input_month)):
+                    temp_iso3166_updates[code].append(all_iso3166_updates[code][update])
 
         #if current alpha-2 has no rows for selected month range, remove from temp object
         if (temp_iso3166_updates[code] == []):
@@ -869,7 +884,7 @@ def api_month(input_month: str=""):
 @app.route('/api/alpha/<input_alpha>/months/<input_month>', methods=['GET'])
 @app.route('/months/<input_month>/alpha/<input_alpha>', methods=['GET'])
 @app.route('/alpha/<input_alpha>/months/<input_month>', methods=['GET'])
-def api_month_alpha(input_month: str="", input_alpha: str=""):
+def api_months_alpha(input_month: str="", input_alpha: str="") -> tuple[dict, int]:
     """
     Flask route for '/api/months' + '/api/alpha' path/endpoint. Return all ISO 3166 
     updates for the previous number of months specified by month parameter, for a 
@@ -903,13 +918,14 @@ def api_month_alpha(input_month: str="", input_alpha: str=""):
     #get current datetime object
     current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
     
-    #return error if invalid month value input
-    if not (str(input_month).isdigit()):
-        error_message["message"] = f"Invalid month input: {''.join(input_month)}."
-        return jsonify(error_message), 400
-
-    #convert str month parameter value to an int
-    input_month = int(input_month)
+    #return error if invalid month value input, otherwise convert str into int, skip if month range input
+    if not ('-' in input_month):
+        if not (str(input_month).isdigit()):
+            error_message["message"] = f"Invalid month input: {''.join(input_month)}."
+            return jsonify(error_message), 400
+        # else:
+        #     #convert str month parameter value to an int
+        #     input_month = int(input_month)
 
     #parse alpha code parameter, split, uppercase, remove any whitespace and sort
     alpha2_code = sorted(input_alpha.upper().replace(' ', '').replace('%20', '').split(','))
@@ -958,9 +974,19 @@ def api_month_alpha(input_month: str="", input_alpha: str=""):
             #calculate months difference
             diff_months = date_diff.months + (date_diff.years * 12)
 
-            #if current updates row is <= month input param then add to temp object
-            if (diff_months <= input_month):
-                temp_iso3166_updates[code].append(iso3166_updates[code][update])
+            #parse parameter to get range of months to get updates from
+            if ('-' in input_month):
+                start_month, end_month = input_month.split('-')[0], input_month.split('-')[1]
+                #if months in month range input are wrong way around then swap them
+                if (start_month > end_month):
+                    start_month, end_month = end_month, start_month
+                #if current updates row is >= start month input param and <= end month then add to temp object
+                if ((diff_months >= int(start_month)) and (diff_months <= int(end_month))):
+                    temp_iso3166_updates[code].append(iso3166_updates[code][update])
+            else:
+                #if current updates row is <= month input param then add to temp object
+                if (diff_months <= int(input_month)):
+                    temp_iso3166_updates[code].append(iso3166_updates[code][update])
 
         #if current alpha-2 has no rows for selected month range, remove from temp object
         if (temp_iso3166_updates[code] == []):
@@ -1044,7 +1070,7 @@ def convert_to_alpha2(alpha_code: str):
         return iso3166.countries_by_alpha3[alpha_code].alpha2
 
 @app.errorhandler(404)
-def not_found(e: int):
+def not_found(e: int) -> tuple[dict, int]:
     """
     Return html template for 404.html when page/path not found in Flask app.
 

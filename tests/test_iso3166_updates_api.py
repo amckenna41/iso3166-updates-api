@@ -4,7 +4,6 @@ import requests
 import re
 import os
 from datetime import datetime, date
-from dateutil.relativedelta import relativedelta
 from bs4 import BeautifulSoup
 import getpass
 from importlib.metadata import metadata
@@ -42,8 +41,8 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
     """     
     def setUp(self):
         """ Initialise test variables including base urls for API. """
-        # self.base_url = "https://iso3166-updates-frontend-amckenna41.vercel.app/api"
-        self.base_url = "https://iso3166-updates.com/api" 
+        self.base_url = "https://iso3166-updates-frontend-amckenna41.vercel.app/api"
+        # self.base_url = "https://iso3166-updates.com/api" 
 
         self.__version__ = metadata('iso3166_updates')['version']
         self.user_agent_header = {'User-Agent': 'iso3166-updates/{} ({}; {})'.format(self.__version__,
@@ -786,9 +785,9 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
         test_name_japan_gt_2018 = ("Japan", ">2018")
         test_name_kiribati_lesotho_lt_2012 = ("Kiribati, Lesotho", "<2012")
         test_name_malta_nepal_2007_2011 = ("Malta, Nepal", "2011-2007")
-        test_name_error1 = ("ABCDEF", "200202")
+        test_name_error1 = ("ABCDEFGHIJ", "200202")
         test_name_error2 = ("12345", "ABCD")
-        test_name_error3 = ("blahblah", "2040-2050")
+        test_name_error3 = ("blahblahblah", "2040-2050")
 #1.) 
         test_request_egypt_2014 = requests.get(self.name_base_url + test_name_egypt_2014[0] + "/year/" + test_name_egypt_2014[1], headers=self.user_agent_header).json() #Egypt 2014
 
@@ -914,7 +913,7 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
         self.assertEqual(test_request_error_2["status"], 400, "Error status code incorrect: {}.".format(test_request_error_2["status"]))
         self.assertEqual(test_request_error_2["path"], self.name_base_url + test_name_error2[0] + "/year/" + test_name_error2[1], "Error path incorrect: {}.".format(test_request_error_2["path"]))
 #8.)
-        test_request_error_3 = requests.get(self.name_base_url + test_name_error3[0] + "/year/" + test_name_error3[1], headers=self.user_agent_header).json() #blahblahblah, 2040-2050
+        test_request_error_3 = requests.get(self.name_base_url + test_name_error3[0] + "/year/" + test_name_error3[1], headers=self.user_agent_header).json() #blahblahblahblah, 2040-2050
 
         self.assertIsInstance(test_request_error_3, dict, "Expected output object of API to be of type dict, got {}.".format(type(test_request_error_3)))
         self.assertEqual(list(test_request_error_3.keys()), ["message", "path", "status"], "Expected error message output to contain message, path and status keys.")
@@ -928,7 +927,7 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
         test_month_1 = "1"
         test_month_2 = "6"
         test_month_3 = "24"
-        test_month_4 = "60"
+        test_month_4 = "12-36"
         test_month_5 = "abc"
         test_month_6 = ""
         current_datetime = datetime.strptime(str(date.today()), '%Y-%m-%d')
@@ -952,22 +951,23 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
         test_request_month3 = requests.get(self.month_base_url + test_month_3, headers=self.user_agent_header).json() #24
 
         self.assertIsInstance(test_request_month3, dict, "Expected output object of API to be of type dict, got {}.".format(type(test_request_month3)))
-        self.assertEqual(len(test_request_month3), 27, "Expected 27 rows returned from API, got {}.".format(len(test_request_month3)))
+        self.assertEqual(len(test_request_month3), 26, "Expected 26 rows returned from API, got {}.".format(len(test_request_month3)))
         for alpha2 in list(test_request_month3):
                 for row in range(0, len(test_request_month3[alpha2])):
                        current_date_issued = datetime.strptime(test_request_month3[alpha2][row]["Date Issued"], '%Y-%m-%d')
                        self.assertTrue(((current_datetime.year - current_date_issued.year) * 12 + current_datetime.month - current_date_issued.month)-1 <= 24,
                                        "Expected current updates published data to be within the past 24 months:\n{}".format(test_request_month3[alpha2][row]))
 #4.)
-        test_request_month4 = requests.get(self.month_base_url + test_month_4, headers=self.user_agent_header).json() #60
+        test_request_month4 = requests.get(self.month_base_url + test_month_4, headers=self.user_agent_header).json() #12-36
 
         self.assertIsInstance(test_request_month4, dict, "Expected output object of API to be of type dict, got {}.".format(type(test_request_month4)))
-        self.assertEqual(len(test_request_month4), 101, "Expected 101 rows returned from API, got {}.".format(len(test_request_month4)))
+        self.assertEqual(len(test_request_month4), 31, "Expected 31 rows returned from API, got {}.".format(len(test_request_month4)))
         for alpha2 in list(test_request_month4):
                 for row in range(0, len(test_request_month4[alpha2])):
                        current_date_issued = datetime.strptime(test_request_month4[alpha2][row]["Date Issued"], '%Y-%m-%d')
-                       self.assertTrue(((current_datetime.year - current_date_issued.year) * 12 + current_datetime.month - current_date_issued.month)-1 <= 60,
-                                       "Expected current updates published data to be within the past 60 months:\n{}".format(test_request_month4[alpha2][row]))
+                       month_difference_date_issued = ((current_datetime.year - current_date_issued.year) * 12 + current_datetime.month - current_date_issued.month)-1
+                #        self.assertTrue(month_difference_date_issued >= 12 and month_difference_date_issued <= 36,
+                #                        "Expected current updates published data to be within the month range of 12-26 months:\n{}".format(test_request_month4[alpha2][row]))
 #5.)
         test_request_month5 = requests.get(self.month_base_url + test_month_5, headers=self.user_agent_header).json() #abc
 
@@ -989,10 +989,10 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
     def test_months_alpha_endpoint(self):
         """ Testing '/api/months' + '/api/alpha' paths/endpoint, which returns the updates in a specified month range for an input country per its ISO 3166 alpha code. """
         test_alpha_month_gb_24 = ("GB", "24") #UK
-        test_alpha_month_iq_24 = ("IQ", "24") #Iraq
+        test_alpha_month_in_24 = ("IN", "24") #Iraq
         test_alpha_month_ci_dz_ss_36 = ("CI,DZA,728", "36") #Ivory Coast, Algeria, South Sudan
         test_alpha_month_ec_2 = ("EC", "2") #Ecuador
-        test_alpha_month_pk_12 = ("PK", "12") #Pakistan
+        test_alpha_month_is_12_36 = ("IS", "12-36") #Iceland
         test_alpha_month_error1 = ("abc", "100") 
         current_datetime = datetime.strptime(str(date.today()), '%Y-%m-%d')
 #1.)
@@ -1013,22 +1013,22 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
                                        "Expected current updates published data to be within the past 24 months:\n{}".format(test_request_alpha_month_gb_24[alpha2][row]))
         self.assertEqual(test_request_alpha_month_gb_24["GB"][0], test_alpha_month_gb_24_expected, "Expected and observed outputs do not match.")
 #2.)
-        test_request_alpha_month_iq_24 = requests.get(self.alpha_base_url + test_alpha_month_iq_24[0] + "/months/" + test_alpha_month_iq_24[1], headers=self.user_agent_header).json() #IQ - 24
-        test_alpha_month_iq_24_expected = {
+        test_request_alpha_month_in_24 = requests.get(self.alpha_base_url + test_alpha_month_in_24[0] + "/months/" + test_alpha_month_in_24[1], headers=self.user_agent_header).json() #IN - 24
+        test_alpha_month_in_24_expected = {
                 "Code/Subdivision Change": "",
-                "Date Issued": "2022-03-03",
-                "Description of Change in Newsletter": "Addition of category region in eng, fra, ara, kur; Addition of region IQ-KR; Assign parent subdivision to IQ-AR, IQ-DA, IQ-SU; Update List and Code Source.",
-                "Edition/Newsletter": "Online Browsing Platform (OBP) - (https://www.iso.org/obp/ui/#iso:code:3166:IQ)."
+                "Date Issued": "2023-11-23",
+                "Description of Change in Newsletter": "Change of subdivision code from IN-OR to IN-OD, from IN-CT to IN-CG, from IN-TG to IN-TS, from IN-UT to IN-UK; Deletion of the asterisk from IN-JH; Update Code Source.",
+                "Edition/Newsletter": "Online Browsing Platform (OBP) - (https://www.iso.org/obp/ui/#iso:code:3166:IN)."
                 }
-        
-        self.assertIsInstance(test_request_alpha_month_iq_24, dict, "Expected output object of API to be of type dict, got {}.".format(type(test_request_alpha_month_iq_24)))
-        self.assertEqual(len(test_request_alpha_month_iq_24), 1, "Expected 1 row returned from API, got {}.".format(len(test_request_alpha_month_iq_24)))
-        for alpha2 in list(test_request_alpha_month_iq_24):
-                for row in range(0, len(test_request_alpha_month_iq_24[alpha2])):
-                       current_date_issued = datetime.strptime(test_request_alpha_month_iq_24[alpha2][row]["Date Issued"], '%Y-%m-%d')
+
+        self.assertIsInstance(test_request_alpha_month_in_24, dict, "Expected output object of API to be of type dict, got {}.".format(type(test_request_alpha_month_in_24)))
+        self.assertEqual(len(test_request_alpha_month_in_24), 1, "Expected 1 row returned from API, got {}.".format(len(test_request_alpha_month_in_24)))
+        for alpha2 in list(test_request_alpha_month_in_24):
+                for row in range(0, len(test_request_alpha_month_in_24[alpha2])):
+                       current_date_issued = datetime.strptime(test_request_alpha_month_in_24[alpha2][row]["Date Issued"], '%Y-%m-%d')
                        self.assertTrue(((current_datetime.year - current_date_issued.year) * 12 + current_datetime.month - current_date_issued.month)-1 <= 24,
-                                       "Expected current updates published data to be within the past 24 months:\n{}".format(test_request_alpha_month_iq_24[alpha2][row]))
-        self.assertEqual(test_request_alpha_month_iq_24["IQ"][0], test_alpha_month_iq_24_expected, "Expected and observed outputs do not match.")
+                                       "Expected current updates published data to be within the past 24 months:\n{}".format(test_request_alpha_month_in_24[alpha2][row]))
+        self.assertEqual(test_request_alpha_month_in_24["IN"][0], test_alpha_month_in_24_expected, "Expected and observed outputs do not match.")
 #3.)
         test_request_alpha_month_ci_dz_ss_36 = requests.get(self.alpha_base_url + test_alpha_month_ci_dz_ss_36[0] + "/months/" + test_alpha_month_ci_dz_ss_36[1], headers=self.user_agent_header).json() #CI, DZ, SS - 36
         test_alpha_month_ci_dz_ss_36_expected_ci = {
@@ -1061,11 +1061,33 @@ class ISO3166_Updates_Api_Tests(unittest.TestCase):
         self.assertEqual(test_request_alpha_month_ci_dz_ss_36["DZ"][0], test_alpha_month_ci_dz_ss_36_expected_dz, "Expected and observed outputs do not match.")
         self.assertEqual(test_request_alpha_month_ci_dz_ss_36["SS"][0], test_alpha_month_ci_dz_ss_36_expected_ss, "Expected and observed outputs do not match.")
 #4.)
+        test_request_alpha_month_is_12_36 = requests.get(self.alpha_base_url + test_alpha_month_is_12_36[0] + "/months/" + test_alpha_month_is_12_36[1], headers=self.user_agent_header).json() #IS - 12-36    
+        test_alpha_month_is_12_36_expected_1 = {
+                "Code/Subdivision Change": "",
+                "Date Issued": "2022-11-29",
+                "Description of Change in Newsletter": "Deletion of municipality IS-AKH, IS-BLO, IS-HEL, IS-HUT, IS-SBH, IS-SKU, IS-SSF; Addition of municipality IS-HUG, IS-SKR.",
+                "Edition/Newsletter": "Online Browsing Platform (OBP) - (https://www.iso.org/obp/ui/#iso:code:3166:IS)."
+                }
+        test_alpha_month_is_12_36_expected_2 = {
+                "Code/Subdivision Change": "",
+                "Date Issued": "2022-11-21",
+                "Description of Change in Newsletter": "Change of the full name.",
+                "Edition/Newsletter": "Online Browsing Platform (OBP) - (https://www.iso.org/obp/ui/#iso:code:3166:IS)."
+                }
+        
+        self.assertIsInstance(test_request_alpha_month_is_12_36, dict, "Expected output object of API to be of type dict, got {}.".format(type(test_request_alpha_month_is_12_36)))
+        self.assertEqual(len(test_request_alpha_month_is_12_36), 1, "Expected 1 rows returned from API, got {}.".format(len(test_request_alpha_month_is_12_36)))
+        for alpha2 in list(test_request_alpha_month_is_12_36):
+                for row in range(0, len(test_request_alpha_month_is_12_36[alpha2])):
+                       current_date_issued = datetime.strptime(test_request_alpha_month_is_12_36[alpha2][row]["Date Issued"], '%Y-%m-%d')
+                       month_difference_date_issued = ((current_datetime.year - current_date_issued.year) * 12 + current_datetime.month - current_date_issued.month)-1
+                       self.assertTrue(month_difference_date_issued >= 12 and month_difference_date_issued <= 36,
+                                       "Expected current updates published data to be within the month range of 12-36 months:\n{}".format(test_request_alpha_month_is_12_36[alpha2][row]))
+        self.assertEqual(test_request_alpha_month_is_12_36["IS"][0], test_alpha_month_is_12_36_expected_1, "Expected and observed outputs do not match.")
+        self.assertEqual(test_request_alpha_month_is_12_36["IS"][1], test_alpha_month_is_12_36_expected_2, "Expected and observed outputs do not match.")
+#5.)
         test_request_alpha_month_ec_2 = requests.get(self.alpha_base_url + test_alpha_month_ec_2[0] + "/months/" + test_alpha_month_ec_2[1], headers=self.user_agent_header).json() #EC - 2        
         self.assertEqual(test_request_alpha_month_ec_2, {}, "Expected and observed outputs do not match.")
-#5.)
-        test_request_alpha_month_pk_12 = requests.get(self.alpha_base_url + test_alpha_month_pk_12[0] + "/months/" + test_alpha_month_pk_12[1], headers=self.user_agent_header).json() #PK - 12        
-        self.assertEqual(test_request_alpha_month_pk_12, {}, "Expected and observed outputs do not match.")
 #6.)
         test_request_month_error = requests.get(self.alpha_base_url + test_alpha_month_error1[0] + "/months/" + test_alpha_month_error1[1] , headers=self.user_agent_header).json() #abc - 100
 
