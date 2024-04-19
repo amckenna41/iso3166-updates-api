@@ -118,7 +118,7 @@ def api_alpha(input_alpha: str="") -> tuple[dict, int]:
     
     #if no input alpha parameter then return error message
     if (input_alpha == ""):
-        error_message["message"] = f"The alpha input parameter cannot be empty." 
+        error_message["message"] = "The alpha input parameter cannot be empty." 
         return jsonify(error_message), 400    
 
     #parse alpha code parameter, sort, uppercase and remove any whitespace
@@ -188,7 +188,7 @@ def api_year(input_year: str="") -> tuple[dict, int]:
     
     #if no input year parameter then return error message
     if (input_year == ""):
-        error_message["message"] = f"The year input parameter cannot be empty." 
+        error_message["message"] = "The year input parameter cannot be empty." 
         return jsonify(error_message), 400    
     
     #parse alpha code parameter, split into list, remove any whitespace and sort
@@ -815,16 +815,14 @@ def api_months(input_month: str="") -> tuple[dict, int]:
     
     #if no input month parameter then return error message
     if (input_month == ""):
-        error_message["message"] = f"The month input parameter cannot be empty." 
+        error_message["message"] = "The month input parameter cannot be empty." 
         return jsonify(error_message), 400    
 
-    #return error if invalid month value input, otherwise convert str into int, skip if month range input
+    #return error if invalid month value input, skip if month range input
     if not ('-' in input_month):
         if not (str(input_month).isdigit()):
             error_message["message"] = f"Invalid month input: {''.join(input_month)}."
             return jsonify(error_message), 400
-        # else:
-        #     input_month = int(input_month)
         
     #get current datetime object
     current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
@@ -918,14 +916,11 @@ def api_months_alpha(input_month: str="", input_alpha: str="") -> tuple[dict, in
     #get current datetime object
     current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
     
-    #return error if invalid month value input, otherwise convert str into int, skip if month range input
+    #return error if invalid month value input, skip if month range input
     if not ('-' in input_month):
         if not (str(input_month).isdigit()):
             error_message["message"] = f"Invalid month input: {''.join(input_month)}."
             return jsonify(error_message), 400
-        # else:
-        #     #convert str month parameter value to an int
-        #     input_month = int(input_month)
 
     #parse alpha code parameter, split, uppercase, remove any whitespace and sort
     alpha2_code = sorted(input_alpha.upper().replace(' ', '').replace('%20', '').split(','))

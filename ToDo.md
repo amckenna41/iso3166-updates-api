@@ -78,3 +78,7 @@
 - [X] When searching for a specific country via its name, if closeness score is high enough, in the error message include "Did you mean {country}?"
 - [X] Include return type for parameter typed functions.
 - [X] In months functionality, add support for month range e.g /months/12-36, updates published over the past 12-36 months. Add unit tests, update API.md.
+- [X] In build_test workflow, split up build, test, linting into separate sections. But need to install the required dependencies on each job as they are separate and run on different machines. Combine build and test into one workflow?
+- [X] Double check artifacts are being exported in workflow file.
+- [ ] Raise error in API if multiple comma seperated year ranges input: https://iso3166-updates.com/api/year/2021-2022,2001-2002.
+- [X] Switch string formatting to f string.

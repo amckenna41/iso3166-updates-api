@@ -6,6 +6,7 @@ on:
     branches: [ main ]
     paths-ignore: 
       - '**/.md'
+      - '**/.yml'
       - 'docs/**/*'
       - LICENSE
       - .gitignore
@@ -17,9 +18,8 @@ on:
 
 #build and test iso3166-updates-api
 jobs:
-  # test job, waits for build job to complete
-  test:
-    name: Setup environment
+  build_test:
+    name: Building and testing
     timeout-minutes: 15
     runs-on: ubuntu-latest        
     strategy:
@@ -33,20 +33,39 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
-    #create artifacts dir
-    - name: Artifacts mkdir
-      run: mkdir artifacts
-
     # install all required modules and dependancies using pip and requirements.txt installation
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip3 install pytest-cov
-        pip3 install bandit
-        pip3 install safety
-        pip install codecov
-        pip install beautifulsoup4
+        pip3 install pytest-cov bandit safety codecov beautifulsoup4
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    #unit tests using unittest framework
+    - name: Testing with unittest
+      run: |
+        echo "Testing using unittest..."
+        python3 -m unittest discover tests -v
+        
+  #run various vulnerability, security and package checks 
+  security_check:
+    name: Bandit and package safety check 
+    timeout-minutes: 15
+    runs-on: ${{ matrix.os }}
+    strategy:
+        matrix:
+            # os: [ubuntu-latest, windows-latest] #testing on multiple OS's, macos-latest
+            os: [ubuntu-latest]
+            python-version: ["3.8", "3.9", "3.10"]   #testing on multiple python versions
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    #create artifacts dir
+    - name: Artifacts mkdir
+      run: mkdir artifacts
 
     #package vulnerability check
     - name: Package safety check
@@ -63,12 +82,6 @@ jobs:
         python3 -m bandit -r index.py > artifacts/bandit_output.txt
         cat artifacts/bandit_output.txt
       continue-on-error: true
-
-    #unit tests using unittest
-    - name: Testing with unittest
-      run: |
-        echo "Testing using unittest..."
-        python3 -m unittest discover tests -v
     
     #upload test artifacts to workflow
     - name: Upload Test Artifacts
@@ -78,7 +91,7 @@ jobs:
         path: |
           artifacts/package_safety_output.txt
           artifacts/bandit_output.txt
-  
+
   #linter check on repo
   linter:
     runs-on: ubuntu-latest
