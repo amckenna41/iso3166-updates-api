@@ -20,6 +20,8 @@ from dateutil import relativedelta
 /api/months/<input_months> -  return all updates data from the previous number of months
 /api/months/<input_months>/alpha/<input_alpha> - return all updates data from the previous number of months for input country
       using its ISO 3166-1 alpha-2, alpha-3 or numeric codes
+/api/months/<input_months>/name/<input_name> - return all updates data from the previous number of months for input country
+      name
 '''
 ###############################################################################################################################
 
@@ -823,9 +825,20 @@ def api_months(input_month: str="") -> tuple[dict, int]:
         if not (str(input_month).isdigit()):
             error_message["message"] = f"Invalid month input: {''.join(input_month)}."
             return jsonify(error_message), 400
-        
+
     #get current datetime object
     current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
+    
+    #parse from date query string param, used for testing the /months endpoints, the from date will be the starting date used instead of the current date
+    from_date = request.args.get('from_date')
+
+    #convert from_date parameter into datetime object, set from_date as current datetime param value, if conversion fails set to None
+    if not (from_date is None):
+        try:
+            from_date = datetime.strptime(from_date.replace('\n', ''), '%Y-%m-%d')
+            current_datetime = from_date
+        except:
+            from_date = None
 
     #temporary updates object
     temp_iso3166_updates = {}
@@ -912,15 +925,26 @@ def api_months_alpha(input_month: str="", input_alpha: str="") -> tuple[dict, in
 
     #set path url for error message object
     error_message['path'] = request.base_url
-
-    #get current datetime object
-    current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
     
     #return error if invalid month value input, skip if month range input
     if not ('-' in input_month):
         if not (str(input_month).isdigit()):
             error_message["message"] = f"Invalid month input: {''.join(input_month)}."
             return jsonify(error_message), 400
+
+    #get current datetime object
+    current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
+
+    #parse from date query string param, used for testing the /months endpoints, the from date will be the starting date used instead of the current date
+    from_date = request.args.get('from_date')
+
+    #convert from_date parameter into datetime object, set from_date as current datetime param value, if conversion fails set to None
+    if not (from_date is None):
+        try:
+            from_date = datetime.strptime(from_date.replace('\n', ''), '%Y-%m-%d')
+            current_datetime = from_date
+        except:
+            from_date = None
 
     #parse alpha code parameter, split, uppercase, remove any whitespace and sort
     alpha2_code = sorted(input_alpha.upper().replace(' ', '').replace('%20', '').split(','))
@@ -953,6 +977,151 @@ def api_months_alpha(input_month: str="", input_alpha: str="") -> tuple[dict, in
 
     #filter out updates that are not within specified month range
     for code in alpha2_code:
+        temp_iso3166_updates[code] = [] 
+        for update in range(0, len(iso3166_updates[code])):
+
+            #convert year in Date Issued column to date object, remove "corrected" date if applicable
+            if ("corrected" in iso3166_updates[code][update]["Date Issued"]):
+                row_date = datetime.strptime(re.sub("[(].*[)]", "", iso3166_updates[code][update]["Date Issued"]).replace(' ', "").
+                                                    replace(".", '').replace('\n', ''), '%Y-%m-%d')
+            else:
+                row_date = datetime.strptime(iso3166_updates[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d')
+            
+            #calculate difference in dates
+            date_diff = relativedelta.relativedelta(current_datetime, row_date)
+
+            #calculate months difference
+            diff_months = date_diff.months + (date_diff.years * 12)
+
+            #parse parameter to get range of months to get updates from
+            if ('-' in input_month):
+                start_month, end_month = int(input_month.split('-')[0]), int(input_month.split('-')[1])
+                #if months in month range input are wrong way around then swap them
+                if (start_month > end_month):
+                    start_month, end_month = end_month, start_month
+                #if current updates row is >= start month input param and <= end month then add to temp object
+                if ((diff_months >= start_month) and (diff_months <= end_month)):
+                    temp_iso3166_updates[code].append(iso3166_updates[code][update])
+            else:
+                #if current updates row is <= month input param then add to temp object
+                if (diff_months <= int(input_month)):
+                    temp_iso3166_updates[code].append(iso3166_updates[code][update])
+
+        #if current alpha-2 has no rows for selected month range, remove from temp object
+        if (temp_iso3166_updates[code] == []):
+            temp_iso3166_updates.pop(code, None)
+
+    #set main updates dict to temp one
+    iso3166_updates = temp_iso3166_updates
+
+    return jsonify(iso3166_updates), 200
+
+@app.route('/api/months/<input_month>/name/<input_name>', methods=['GET'])
+@app.route('/api/name/<input_name>/months/<input_month>', methods=['GET'])
+@app.route('/months/<input_month>/name/<input_name>', methods=['GET'])
+@app.route('/name/<input_name>/months/<input_month>', methods=['GET'])
+def api_months_name(input_month: str="", input_name: str="") -> tuple[dict, int]:
+    """
+    Flask route for '/api/months' + '/api/name' path/endpoint. Return all ISO 3166 
+    updates for the previous number of months specified by month parameter, for a 
+    specified country or list of countries using their country name, as it is commonly
+    known in English. If an invalid country name or invalid month input then return 
+    error. Route can accept the path with or without the trailing slash.
+
+    Parameters
+    ==========
+    :input_month: string
+        number of past months to get published updates from, inclusive.
+    :input_name: string
+        1 or more ISO 3166-1 country names, as they are commonly known in English.
+
+    Returns
+    =======
+    :iso3166_updates: json
+        jsonified response of iso3166 updates per input month and country name.
+    :status_code: int
+        response status code. 200 is a successful response, 400 means there was an invalid 
+        parameter input.
+    """
+    #initialise vars
+    iso3166_updates = {}
+    names = []
+    alpha2_codes = []
+
+    #set path url for error message object
+    error_message['path'] = request.base_url
+    
+    #return error if invalid month value input, skip if month range input
+    if not ('-' in input_month):
+        if not (str(input_month).isdigit()):
+            error_message["message"] = f"Invalid month input: {''.join(input_month)}."
+            return jsonify(error_message), 400
+
+    #get current datetime object
+    current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
+
+    #parse from date query string param, used for testing the /months endpoints, the from date will be the starting date used instead of the current date
+    from_date = request.args.get('from_date')
+
+    #convert from_date parameter into datetime object, set from_date as current datetime param value, if conversion fails set to None
+    if not (from_date is None):
+        try:
+            from_date = datetime.strptime(from_date.replace('\n', ''), '%Y-%m-%d')
+            current_datetime = from_date
+        except:
+            from_date = None
+
+    #remove unicode space (%20) from input parameter
+    input_name = input_name.replace('%20', ' ').title()
+    
+    #check if input country is in above list, if not add to sorted comma separated list    
+    if (input_name.upper() in name_comma_exceptions):
+        names = [input_name]
+    else:
+        names = sorted(input_name.split(','))
+    
+    #iterate over list of names, convert country names from names_converted dict, if applicable
+    for name_ in range(0, len(names)):
+        if (names[name_].title() in list(names_converted.keys())):
+            names[name_] = names_converted[names[name_]]
+
+    #remove all whitespace in any of the country names
+    names = [name_.strip(' ') for name_ in names]
+
+    #get list of available country names from iso3166 library, remove whitespace
+    all_names_no_space = [name_.strip(' ') for name_ in list(iso3166.countries_by_name.keys())]
+    
+    #iterate over all input country names, get corresponding 2 letter alpha-2 code
+    for name_ in names:
+
+        #using thefuzz library, get all countries that match the input country name
+        name_matches = process.extract(name_.upper(), all_names_no_space, scorer=fuzz.ratio)
+        
+        #return error if no matching country name found
+        if (name_matches == []):           
+            #return error if country name not found
+            error_message["message"] = "No matching country name found for input: {}.".format(name_)
+            return jsonify(error_message), 400
+        elif (name_matches[0][1] <70):
+            if (name_matches[0][1] >60):
+                #return error if country name not found
+                error_message["message"] = "No matching country name found for input: {}, did you mean {}?".format(name_, name_matches[0][0].title())
+            else:
+                error_message["message"] = "No matching country name found for input: {}.".format(name_)
+            return jsonify(error_message), 400
+
+        #use iso3166 package to find corresponding alpha-2 code from its name
+        alpha2_codes.append(iso3166.countries_by_name[name_matches[0][0].upper()].alpha2)
+
+    #get updates from iso3166_updates instance object per country using alpha-2 code
+    for code in alpha2_codes:
+        iso3166_updates[code] = all_iso3166_updates[code]
+        
+    #temporary updates object
+    temp_iso3166_updates = {}
+
+    #filter out updates that are not within specified month range
+    for code in alpha2_codes:
         temp_iso3166_updates[code] = [] 
         for update in range(0, len(iso3166_updates[code])):
 

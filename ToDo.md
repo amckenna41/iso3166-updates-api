@@ -16,7 +16,7 @@
 - [X] Update endpoint function parameter comments.
 - [X] Check which route https://iso3166-updates.com/?year=2002-2010 this applies to, should throw error that /api needs to be prepended. https://iso3166-updates.com/api?year=2002-2010 should work.
 - [X] If query string params appended to /api path then redirect to respective url.
-- [X] Move error_message outside of individiual functions.
+- [X] Move error_message outside of individual functions.
 - [X] Append url to error message.
 - [X] Add name endpoint to API
 - [X] Add unit tests for name endpoint - can take from iso3166-2 unit tests for name.
@@ -26,7 +26,7 @@
 - [X] Add API path /name/input_name/year/2015. Add unit tests.
 - [X] Update API to incorporate Date Issued Corrected functionality.
 - [X] Update api unit tests script to include updates from main iso3166-updates repo.
-- [X] Go over main repo readmes.
+- [X] Go over main repo readmes. 
 - [X] Change all comment underlining from "------" to "=======".
 - [X] Update index.html and error.html to that of iso3166-2-api.
 - [X] Validate that .vercelignore is being executed.
@@ -80,5 +80,10 @@
 - [X] In months functionality, add support for month range e.g /months/12-36, updates published over the past 12-36 months. Add unit tests, update API.md.
 - [X] In build_test workflow, split up build, test, linting into separate sections. But need to install the required dependencies on each job as they are separate and run on different machines. Combine build and test into one workflow?
 - [X] Double check artifacts are being exported in workflow file.
-- [ ] Raise error in API if multiple comma seperated year ranges input: https://iso3166-updates.com/api/year/2021-2022,2001-2002.
+- [X] Raise error in API if multiple comma separated year ranges input: https://iso3166-updates.com/api/year/2021-2022,2001-2002.
 - [X] Switch string formatting to f string.
+- [X] Programmatically pull last updated date from pypi - refer to iso3166-2-api.
+- [X] In index.html, update number of endpoints in Endpoints section.
+- [X] In index.html, reorder credits and contributing sections.
+- [X] Add api_months_name endpoint - /name endpoint example not working - https://iso3166-updates.com/api/name/Senegal,Suriname,Sri lanka/months/60
+- [X] Add "?from_dage" parameter, used for testing /months endpoints - update uni tests, unskip months tests.
