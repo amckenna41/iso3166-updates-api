@@ -37,8 +37,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-iso3166-updates-sa.json
-
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -121,6 +119,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+iso3166_updates_venv/
 
 # Spyder project settings
 .spyderproject
@@ -140,3 +139,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .vercel
+
+index_old_search.py
+index_original.py
+TODO.md
+.github/workflows/TODO.md

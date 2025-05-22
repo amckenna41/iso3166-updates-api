@@ -3,3 +3,5 @@ ToDo.md
 tests
 .github
 .gitignore
+old/
+iso3166_updates_venv/

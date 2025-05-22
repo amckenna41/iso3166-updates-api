@@ -2,26 +2,48 @@ from flask import Flask, request, render_template, jsonify
 import iso3166
 from iso3166_updates import *
 import re
+import urllib.parse
 from thefuzz import fuzz, process
+from urllib.parse import unquote
 from datetime import datetime
-from dateutil import relativedelta
 
 ########################################################## Endpoints ##########################################################
 '''
 /api - main homepage for API, displaying purpose, examples and documentation
 /api/all - return all updates data for all countries
 /api/alpha/<input_alpha> - return all updates data for input country using its ISO 3166-1 alpha-2, alpha-3 or numeric codes  
-/api/year/<input_year> - return all updates data for input year, list of years, year range or greater/less than input year
-/api/name/<input_name> - return all updates for input country name
+/api/year/<input_year> - return all updates data for input year, list of years, year range, greater/less than input year or
+        not equal to a year
+/api/country_name/<input_country_name> - return all updates for input country name, as its commonly known in English
+/api/search/<search_term> - return all updates that have the inputted search term/terms
 /api/alpha/<input_alpha>/year/<input_year> - return all updates data for input ISO 3166-1 alpha-2, alpha-3 or numeric country 
-      code + year, list of years, year range or greater/less than input year
-/api/year/<input_year>/name/<input_name> - return all updates data for input country name + year, list of years, year range 
-      or greater/less than input year
-/api/months/<input_months> -  return all updates data from the previous number of months
-/api/months/<input_months>/alpha/<input_alpha> - return all updates data from the previous number of months for input country
+      code + year, list of years, year range, greater/less than input year or not equal to a year
+/api/year/<input_year>/name/<input_country_name> - return all updates data for input country name + year, list of years, year range 
+      or greater/less than input year or not equal to a year
+/api/date_range/<input_date_range> -  return all updates data within the specified date range.
+/api/date_range/<input_date_range>/alpha/<input_alpha> - return all updates data within the specified date range for input country
       using its ISO 3166-1 alpha-2, alpha-3 or numeric codes
-/api/months/<input_months>/name/<input_name> - return all updates data from the previous number of months for input country
-      name
+'''
+###############################################################################################################################
+
+
+################################################### Query String Parameters ###################################################
+'''
+sortBy - this parameter allows you to sort the output results by publication date (Date Issued), either descending or ascending.
+By default, the updates data will be returned alphabetically, according to ISO 3166 2 letter country code. The parameter accepts 
+two values: dateDesc and dateAsc - sorting the output by date descending or ascending, respectively. If an invalid value input 
+then the output is sorted by country code. This can be appended to all of the endpoints, e.g /api/all?sortBy=dateDesc, 
+/api/year/2010-2015?sortBy=dateAsc, /api/date_range/2019-01-01?sortBy="" (sorted by country code).
+
+likeness - this is a parameter between 1 and 100 that increases or reduces the % similarity/likeness that the inputted search 
+terms have to match to the updates data in the Change and Desc of Change attributes. This can be used with the /api/search and
+/api/country_name endpoints. Having a higher value should return more exact and less matches, and having a lower value will 
+return less exact but more matches, e.g /api/search/Paris?likeness=50, /api/search/canton?likeness=90 (default=100).
+
+excludeMatchScore - this parameter allows you to exclude the matchScore attribute from the search results when using the 
+/api/search endpoint. The match score is the % of a match each returned updates data object is to the search terms, with 100% 
+being an exact match. By default the match score is returned for each object, e.g /api/search/addition?excludeMatchScore=1, 
+/api/search/New York?excludeMatchScore=1 (default=0).
 '''
 ###############################################################################################################################
 
@@ -32,20 +54,19 @@ app = Flask(__name__)
 app.url_map.strict_slashes = False
 
 #json object storing the error message, route and status code 
-error_message = {}
-error_message["status"] = 400
+# error_message = {}
+# error_message["status"] = 400
 
-#create instance of ISO3166_Updates class and get all ISO 3166 updates data
-iso_updates = ISO3166_Updates()
+#create instance of Updates class and get all ISO 3166 updates data
+iso_updates = Updates()
 all_iso3166_updates = iso_updates.all
 
 @app.route('/api')
 @app.route('/')
 def home():
     """
-    Default route for https://iso3166-updates.com. Main homepage for API displaying the 
-    purpose of API and its documentation. Route can accept path with or without 
-    trailing slash.
+    Default route for https://iso3166-updates.vercel.app. Main homepage for API 
+    displaying the purpose of API and its documentation.
 
     Parameters
     ==========
@@ -63,7 +84,7 @@ def home():
 def all() -> tuple[dict, int]:
     """
     Flask route for '/api/all' path/endpoint. Return all ISO 3166-2 updates data for all 
-    available countries. Route can accept path with or without trailing slash.
+    available countries.
 
     Parameters
     ==========
@@ -74,101 +95,84 @@ def all() -> tuple[dict, int]:
     :jsonify(all_iso3166_updates): json
         jsonified ISO 3166 updates data.
     :status_code: int
-        response status code. 200 is a successful response, 400 means there was an 
-        invalid parameter input. 
+        response status code. 200 is a successful response.
     """  
-    return jsonify(all_iso3166_updates), 200
+    #pull sortBy/sortby query string parameter, that allows sorting by publication date, descending/ascending
+    sort_by = (request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')
+    
+    #output var of all updates
+    all_updates = all_iso3166_updates
+    
+    #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date
+    if (sort_by == 'dateasc' or sort_by == 'datedesc'):
+        all_updates = sort_by_date(all_iso3166_updates, date_asc_desc=sort_by)
 
+    return jsonify(all_updates), 200
+
+@app.route('/alpha', methods=['GET'])
 @app.route('/api/alpha', methods=['GET'])
 @app.route('/api/alpha/<input_alpha>', methods=['GET'])
-@app.route('/api/alpha/<input_alpha>/year', methods=['GET'])
-@app.route('/api/alpha/<input_alpha>/months', methods=['GET'])
 @app.route('/alpha/<input_alpha>', methods=['GET'])
-@app.route('/alpha/<input_alpha>/year', methods=['GET'])
-@app.route('/alpha/<input_alpha>/months', methods=['GET'])
-@app.route('/alpha', methods=['GET'])
 def api_alpha(input_alpha: str="") -> tuple[dict, int]:
     """
     Flask route for '/api/alpha' path/endpoint. Return all ISO 3166 updates for the inputted 
     ISO 3166-1 alpha-2, alpha-3 or numeric country code/codes. The alpha-3 and numeric codes will 
-    be converted into their corresponding alpha-2 code. If an invalid alpha code input then return 
-    error. Additionally, the endpoint can be used in conjunction with the year and months endpoints.
-    Route can accept path with or without trailing slash.
+    be converted into their corresponding alpha-2 code. A single or list of alpha codes can be 
+    input. If an invalid alpha code input then return error. Additionally, the endpoint can be 
+    used in conjunction with the year and date range endpoints. 
 
     Parameters
     ==========
-    :input_alpha: string
+    :input_alpha: str (default="")
         1 or more alpha-2, alpha-3 or numeric country codes according to the ISO 3166-1 standard. 
         The alpha-3 and numeric codes will be converted into their alpha-2 counterparts.
 
     Returns 
     =======
     :iso3166_updates: json
-        jsonified response of iso3166 updates per input alpha code.
-    :blob_not_found_error_message: dict 
-        error message if issue finding updates object json.  
+        jsonified response of iso3166 updates per input alpha code/codes.
     :status_code: int
         response status code. 200 is a successful response, 400 means there was an 
         invalid parameter input.
     """
     #initialise vars
     iso3166_updates = {}
-    alpha2_code = []
 
-    #set path url for error message object
-    error_message['path'] = request.base_url
-    
+    #pull sortBy query string parameter, that allows sorting by country code or publication date, descending/ascending
+    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+
     #if no input alpha parameter then return error message
     if (input_alpha == ""):
-        error_message["message"] = "The alpha input parameter cannot be empty." 
-        return jsonify(error_message), 400    
+        return jsonify(create_error_message("The ISO 3166-1 alpha input parameter cannot be empty.", request.url)), 400    
 
-    #parse alpha code parameter, sort, uppercase and remove any whitespace
-    alpha2_code = sorted(input_alpha.upper().replace(' ', '').replace('%20', '').split(','))
-    
-    #iterate over each input alpha codes, validating and converting each to its alpha-2 counterpart, if applicable 
-    for code in range(0, len(alpha2_code)):
-        #api can accept 3 letter alpha-3 or numeric code for country, this has to be converted into its alpha-2 counterpart
-        if (len(alpha2_code[code]) == 3):
-            temp_code = convert_to_alpha2(alpha2_code[code])
-            #return error message if invalid numeric code input
-            if (temp_code is None and alpha2_code[code].isdigit()):
-                error_message["message"] = f"Invalid ISO 3166-1 numeric country code input, cannot convert into corresponding alpha-2 code: {''.join(alpha2_code[code])}."
-                return jsonify(error_message), 400
-            #return error message if invalid alpha-3 code input
-            if (temp_code is None):
-                error_message["message"] = f"Invalid ISO 3166-1 alpha-3 country code input, cannot convert into corresponding alpha-2 code: {''.join(alpha2_code[code])}."
-                return jsonify(error_message), 400
-            alpha2_code[code] = temp_code
-        #use regex to validate format of alpha-2 codes, raise error if invalid code input
-        if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[code]))) or (alpha2_code[code] not in list(iso3166.countries_by_alpha2.keys()) or (alpha2_code[code] == "XK")):
-            error_message["message"] = f"Invalid ISO 3166-1 alpha country code input, no corresponding alpha-2 code found: {''.join(alpha2_code[code])}."
-            return jsonify(error_message), 400
+    #get the country updates data using the input alpha codes, return error if invalid codes input
+    try:
+        iso3166_updates = iso_updates[input_alpha]
+    except ValueError as ve:
+        return jsonify(create_error_message(str(ve), request.url)), 400    
 
-    #get updates from iso3166_updates instance object per country using alpha-2 code
-    for code in alpha2_code:
-        iso3166_updates[code] = all_iso3166_updates[code]
+    #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
+    if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(iso3166_updates) > 1:
+        iso3166_updates = sort_by_date(iso3166_updates, date_asc_desc=sort_by)
 
     return jsonify(iso3166_updates), 200
 
+@app.route('/year', methods=['GET'])
 @app.route('/api/year', methods=['GET'])
 @app.route('/api/year/<input_year>', methods=['GET'])
-@app.route('/api/year/<input_year>/alpha', methods=['GET'])
 @app.route('/year/<input_year>', methods=['GET'])
-@app.route('/year', methods=['GET'])
-@app.route('/year/<input_year>/alpha', methods=['GET'])
-@app.route('/year/<input_year>/name', methods=['GET'])
 def api_year(input_year: str="") -> tuple[dict, int]:
     """
     Flask route for '/api/year' path/endpoint. Return all ISO 3166 updates for the inputted 
-    year, list of years, year range or greater than or less than input year. If invalid year 
-    then return error. Route can accept the path with or without the trailing slash.
+    year, list of years, year range, greater than or less than input year or all updates
+    excluding a year/list of years. If invalid year or symbol input then return error. 
 
     Parameters
     ==========
-    :input_year: string
-        year, comma separated list of years, or year range to get updates from. Can also accept 
-        greater than or less than symbol, returning updates greater than/less than specified year.
+    :input_year: str (default="")
+        year, comma separated list of years, year range to get updates from. Can also accept 
+        greater than or less than symbol returning updates greater than/less than specified 
+        year or <> which indicates to exclude the years.
 
     Returns 
     =======
@@ -180,150 +184,52 @@ def api_year(input_year: str="") -> tuple[dict, int]:
     """
     #initialise vars
     iso3166_updates = {}
-    year_range = False
-    greater_than = False
-    less_than = False
-    year = []
-
-    #set path url for error message object
-    error_message['path'] = request.base_url
     
+    #pull sortBy query string parameter, that allows sorting by country code or publication date, descending/ascending
+    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+
     #if no input year parameter then return error message
     if (input_year == ""):
-        error_message["message"] = "The year input parameter cannot be empty." 
-        return jsonify(error_message), 400    
-    
-    #parse alpha code parameter, split into list, remove any whitespace and sort
-    year = sorted(input_year.replace(' ', '').replace('%20', '').split(','))
+        return jsonify(create_error_message("The year input parameter cannot be empty.", request.url)), 400    
 
-    #iterate over all years, convert > or < symbol from unicode to string ("%3E" and "%3C", respectively)
-    for y in range(0, len(year)):
-        if ("%3E" in year[y]):
-            year[y] = ">" + year[y][3:]
-        elif ("%3C" in year[y]):
-            year[y] = "<" + year[y][3:]
+    #remove any unicode characters
+    input_year = urllib.parse.unquote(input_year)
 
-    #validate format of year input parameter:
-    #a '-' separating 2 years implies a year range of sought country updates
-    #a ',' separating 2 years implies a list of years
-    #a '>' before year means get all country updates greater than or equal to specified year
-    #a '<' before year means get all country updates less than specified year
-    if ('-' in year[0]): 
-        year_range = True
-        year = year[0].split('-')
-        #if years in year range input are wrong way around then swap them
-        if (year[0] > year[1]):
-            year[0], year[1] = year[1], year[0]
-        #only 2 years should be included in input parameter when using a year range
-        if (len(year) > 2):
-            year = []
-            year_range = False
-    elif (',' in year[0]):
-        #split years into comma separated list of multiple years if multiple years are input
-        year = year[0].split(',')
-    #parse array if using greater than symbol
-    elif ('>' in year[0]):
-        year = year[0].split('>')
-        greater_than = True
-        year.remove('')
-        #after removing >, only 1 year should be left in year parameter
-        if (len(year) > 1):
-            year = []
-            greater_than = False
-    #parse array if using less than symbol
-    elif ('<' in year[0]):
-        year = year[0].split('<')
-        less_than = True
-        year.remove('')
-        #after removing <, only 1 year should be left in year parameter
-        if (len(year) > 1):
-            year = []
-            less_than = False
+    #get the country updates fot the input years, return error if invalid years input
+    try:
+        iso3166_updates = iso_updates.year(input_year)
+    except ValueError as ve:
+        return jsonify(create_error_message(str(ve), request.url)), 400    
 
-    #iterate over all years, validate their format using regex, raise error if invalid year found    
-    for year_ in year:
-        #skip to next iteration if < or > symbol
-        if (year_ == '<' or year_ == '>'):
-            continue
-        #validate each year format using regex, raise error if invalid year input
-        if not (bool(re.match(r"^1[0-9][0-9][0-9]$|^2[0-9][0-9][0-9]$", year_))):
-            error_message["message"] = f"Invalid year input {''.join(year)}, year should be >1999 and <={datetime.now().year}." 
-            error_message['path'] = request.base_url
-            return jsonify(error_message), 400
-    
-    #temporary updates object
-    temp_iso3166_updates = {}
-            
-    #if no valid alpha-2 codes input, use all alpha-2 codes from iso3166 and all updates data (all_iso3166_updates)
-    input_alpha_codes  = list(iso3166.countries_by_alpha2.keys())
-    input_data = all_iso3166_updates
-
-    #remove XK (Kosovo) from list, if applicable
-    if ("XK" in input_alpha_codes):
-        input_alpha_codes.remove("XK")
-
-    #iterate over alpha codes and data object, remove any rows for country that don't match input year parameter
-    for code in input_alpha_codes:
-        temp_iso3166_updates[code] = []
-        for update in range(0, len(input_data[code])):
-
-            #convert year in Date Issued column to string of year, remove "corrected" date if applicable
-            if ("corrected" in input_data[code][update]["Date Issued"]):
-                temp_year = str(datetime.strptime(re.sub("[(].*[)]", "", input_data[code][update]["Date Issued"]).replace(' ', "").
-                                                    replace(".", '').replace('\n', ''), '%Y-%m-%d').year)
-            else:
-                temp_year = str(datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
-        
-            #if year range true then get country updates within specified range inclusive
-            if (year_range):
-                if (temp_year != "" and (temp_year >= year[0] and temp_year <= year[1])):
-                    temp_iso3166_updates[code].append(input_data[code][update])
-            
-            #if greater than true then get country updates greater than specified year, inclusive
-            elif (greater_than):
-                if (temp_year != "" and (temp_year >= year[0])):
-                    temp_iso3166_updates[code].append(input_data[code][update])    
-
-            #if less than true then get country updates less than specified year 
-            elif (less_than):
-                if (temp_year != "" and (temp_year < year[0])):
-                    temp_iso3166_updates[code].append(input_data[code][update]) 
-
-            #if greater than & less than not true then get country updates equal to specified year
-            elif not (greater_than and less_than):
-                for year_ in year:
-                    if (temp_year != "" and (temp_year == year_)):
-                        temp_iso3166_updates[code].append(input_data[code][update])
-        
-        #if current alpha-2 code has no rows for selected year/year range, remove from temp object
-        if (temp_iso3166_updates[code] == []):
-            temp_iso3166_updates.pop(code, None)
-    
-    #set main updates dict to temp one
-    iso3166_updates = temp_iso3166_updates
+    #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
+    if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(iso3166_updates) > 1:
+        iso3166_updates = sort_by_date(iso3166_updates, date_asc_desc=sort_by)
 
     return jsonify(iso3166_updates), 200
 
 @app.route('/api/year/<input_year>/alpha/<input_alpha>', methods=['GET'])
 @app.route('/api/alpha/<input_alpha>/year/<input_year>', methods=['GET'])
 @app.route('/year/<input_year>/alpha/<input_alpha>', methods=['GET'])
+@app.route('/alpha/<input_alpha>/year/<input_year>', methods=['GET'])
+@app.route('/api/year/<input_year>/alpha/', defaults={'input_alpha': ""}, methods=['GET'])
+@app.route('/api/alpha/<input_alpha>/year/', defaults={'input_year': ""}, methods=['GET'])
 def api_alpha_year(input_alpha: str="", input_year: str="") -> tuple[dict, int]:
     """
     Flask route for '/api/alpha' + '/api/year' path/endpoint. Return all ISO 3166 
     updates for the inputted ISO 3166-1 alpha-2, alpha-3 or numeric country code/codes 
-    + year/years/year range or greater than or less than input year. The alpha-3 and 
-    numeric codes will be converted into their corresponding alpha-2 code. If invalid 
-    alpha code or year/years input then return error. Route can accept the path with 
-    or without the trailing slash.
+    + year/years/year range, greater than or less than input year or not equal to a year. 
+    The alpha-3 and numeric codes will be converted into their corresponding alpha-2 code. 
+    If invalid alpha code or year/years input then return error. Route can accept the 
+    path with or without the trailing slash.
     
     Parameters
     ==========
-    :input_alpha: string
+    :input_alpha: str (default="")
         1 or more ISO 3166-1 alpha-2, alpha-3 or numeric country codes.
-    :input_year: string
+    :input_year: str (default="")
         year, comma separated list of years, or year range to get updates from. Can 
         also accept greater than or less than symbol returning updates greater 
-        than/less than specified year.
+        than/less than specified year or updates not equal to year/list of years.
 
     Returns 
     =======
@@ -336,97 +242,38 @@ def api_alpha_year(input_alpha: str="", input_year: str="") -> tuple[dict, int]:
     #initialise vars
     iso3166_updates = {}
     alpha2_code = []
-    year = []
-    year_range = False
-    greater_than = False
-    less_than = False
 
-    #set path url for error message object
-    error_message['path'] = request.base_url
+    #pull sortBy query string parameter, that allows sorting by country code or publication date, descending/ascending
+    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
 
     #parse alpha code parameter, split, uppercase, remove any whitespace and sort
-    if (input_alpha != ""):
-        alpha2_code = sorted(input_alpha.upper().replace(' ', '').replace('%20', '').split(','))
+    alpha2_code = sorted(input_alpha.strip(",").replace('%20', '').split(','))
 
-    #parse year parameter, split, remove any whitespace and sort
-    if (input_year != ""):
-        year = sorted(input_year.replace(' ', '').replace('%20', '').split(','))
+    #if no input year parameter then return error message
+    if (input_year == ""):
+        return jsonify(create_error_message("The year input parameter cannot be empty.", request.url)), 400    
+        
+    #if no input alpha parameter then return error message
+    if (input_alpha == ""):
+        return jsonify(create_error_message("The alpha code input parameter cannot be empty.", request.url)), 400    
+    
+    #parse and validate input year parameter 
+    year, year_range, year_greater_than, year_less_than, year_not_equal, year_error, year_error_message = validate_year(input_year)
 
-    #iterate over all years, convert > or < symbol from unicode to string ("%3E" and "%3C", respectively)
-    for y in range(0, len(year)):
-        if ("%3E" in year[y]):
-            year[y] = ">" + year[y][3:]
-        elif ("%3C" in year[y]):
-            year[y] = "<" + year[y][3:]
+    #return error if error found when parsing and validating the year input parameter
+    if (year_error):
+        return jsonify(create_error_message(year_error_message, request.url)), 400    
 
     #iterate over each input alpha code, validating and converting into its corresponding alpha-2, if applicable
     if (alpha2_code != []):
         for code in range(0, len(alpha2_code)):
             #api can accept 3 letter alpha-3 or numeric code for country, this has to be converted into its alpha-2 counterpart
-            if (len(alpha2_code[code]) == 3):
-                temp_code = convert_to_alpha2(alpha2_code[code])
-                #return error message if invalid numeric code input
-                if (temp_code is None and alpha2_code[code].isdigit()):
-                    error_message["message"] = f"Invalid ISO 3166-1 numeric country code input, cannot convert into corresponding alpha-2 code: {''.join(alpha2_code[code])}."
-                    return jsonify(error_message), 400
-                #return error message if invalid alpha-3 code input
-                if (temp_code is None):
-                    error_message["message"] = f"Invalid ISO 3166-1 alpha-3 country code input, cannot convert into corresponding alpha-2 code: {''.join(alpha2_code[code])}."
-                    return jsonify(error_message), 400
-                alpha2_code[code] = temp_code
-            #use regex to validate format of alpha-2 codes, raise error if invalid code input
-            if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[code]))) or (alpha2_code[code] not in list(iso3166.countries_by_alpha2.keys()) or (alpha2_code[code] == "XK")):
-                error_message["message"] = f"Invalid ISO 3166-1 alpha country code input, no corresponding alpha-2 code found: {''.join(alpha2_code[code])}."
-                return jsonify(error_message), 400
+            temp_code = convert_to_alpha2(alpha2_code[code])
+            #return error message if invalid alpha code input
+            if (temp_code is None):
+                return jsonify(create_error_message(f"Invalid ISO 3166-1 country code input, cannot convert into corresponding alpha-2 code: {''.join(alpha2_code[code])}.", request.url)), 400 
+            alpha2_code[code] = temp_code
 
-    #validate format of year input parameter:
-    #a '-' separating 2 years implies a year range of sought country updates
-    #a ',' separating 2 years implies a list of years
-    #a '>' before year means get all country updates greater than or equal to specified year
-    #a '<' before year means get all country updates less than specified year
-    if ('-' in year[0]): 
-        year_range = True
-        year = year[0].split('-')
-        #if years in year range input are wrong way around then swap them
-        if (year[0] > year[1]):
-            year[0], year[1] = year[1], year[0]
-        #only 2 years should be included in input parameter when using a year range
-        if (len(year) > 2):
-            year = []
-            year_range = False
-    elif (',' in year[0]):
-        #split years into comma separated list of multiple years if multiple years are input
-        year = year[0].split(',')
-    #parse array if using greater than symbol
-    elif ('>' in year[0]):
-        year = year[0].split('>')
-        greater_than = True
-        year.remove('')
-        #after removing >, only 1 year should be left in year parameter
-        if (len(year) > 1):
-            year = []
-            greater_than = False
-    #parse array if using less than symbol
-    elif ('<' in year[0]):
-        year = year[0].split('<')
-        less_than = True
-        year.remove('')
-        #after removing <, only 1 year should be left in year parameter
-        if (len(year) > 1):
-            year = []
-            less_than = False
-
-    #iterate over all years, validate their format using regex, raise error if invalid year found    
-    for year_ in year:
-        #skip to next iteration if < or > symbol
-        if (year_ == '<' or year_ == '>'):
-            continue
-        #validate each year format using regex, raise error if invalid year input
-        if not (bool(re.match(r"^1[0-9][0-9][0-9]$|^2[0-9][0-9][0-9]$", year_))):
-            error_message["message"] = f"Invalid year input {''.join(year)}, year should be >1999 and <={datetime.now().year}." 
-            error_message['path'] = request.base_url
-            return jsonify(error_message), 400
-        
     #get updates from iso3166_updates object per country using alpha-2 code
     for code in alpha2_code:
         iso3166_updates[code] = all_iso3166_updates[code]
@@ -450,7 +297,7 @@ def api_alpha_year(input_alpha: str="", input_year: str="") -> tuple[dict, int]:
             temp_iso3166_updates[code] = []
             for update in range(0, len(input_data[code])):
 
-                #convert year in Date Issued column to string of year, remove "corrected" date if applicable
+                #convert year in Date Issued column to str of year, remove "corrected" date if applicable
                 if ("corrected" in input_data[code][update]["Date Issued"]):
                     temp_year = str(datetime.strptime(re.sub("[(].*[)]", "", input_data[code][update]["Date Issued"]).replace(' ', "").
                                                       replace(".", '').replace('\n', ''), '%Y-%m-%d').year)
@@ -463,49 +310,59 @@ def api_alpha_year(input_alpha: str="", input_year: str="") -> tuple[dict, int]:
                         temp_iso3166_updates[code].append(input_data[code][update])
                 
                 #if greater than true then get country updates greater than or equal to specified year
-                elif (greater_than):
+                elif (year_greater_than):
                     if (temp_year != "" and (temp_year >= year[0])):
                         temp_iso3166_updates[code].append(input_data[code][update])    
 
                 #if less than true then get country updates less than specified year 
-                elif (less_than):
+                elif (year_less_than):
                     if (temp_year != "" and (temp_year < year[0])):
                         temp_iso3166_updates[code].append(input_data[code][update]) 
 
-                #if greater than & less than not true then get country updates equal to specified year
-                elif not (greater_than and less_than):
+                #get all country updates not equal to current year
+                elif (year_not_equal):
+                    if (temp_year != "" and temp_year not in year):
+                        temp_iso3166_updates[code].append(input_data[code][update])
+
+                #get country updates equal to specified year
+                else:
                     for year_ in year:
                         if (temp_year != "" and (temp_year == year_)):
                             temp_iso3166_updates[code].append(input_data[code][update])
-            
-            #if current alpha-2 has no rows for selected year/year range, remove from temp object
+
+            #if current alpha-2 has no rows for selected year/year range etc, remove from temp object
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
     else:
         temp_iso3166_updates = input_data
     
-    #set main updates dict to temp one
-    iso3166_updates = temp_iso3166_updates
+    #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
+    if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(temp_iso3166_updates) > 1:
+        iso3166_updates = sort_by_date(temp_iso3166_updates, date_asc_desc=sort_by)
+    else:
+        #set main updates dict to temp one
+        iso3166_updates = temp_iso3166_updates
 
     return jsonify(iso3166_updates), 200
 
-@app.route('/api/name/<input_name>', methods=['GET'])
-@app.route('/api/name/<input_name>/year', methods=['GET'])
-@app.route('/api/name/<input_name>/months', methods=['GET'])
-@app.route('/name/<input_name>', methods=['GET'])
-@app.route('/name/<input_name>/year', methods=['GET'])
-@app.route('/name/<input_name>/months', methods=['GET'])
-def api_name(input_name: str="") -> tuple[dict, int]:
+@app.route('/api/country_name', methods=['GET'])
+@app.route('/api/country_name/<input_country_name>', methods=['GET'])
+@app.route('/api/country_name/<input_country_name>/year', methods=['GET'])
+@app.route('/api/country_name/<input_country_name>/date_range', methods=['GET'])
+@app.route('/country_name/<input_country_name>', methods=['GET'])
+@app.route('/country_name/<input_country_name>/year', methods=['GET'])
+@app.route('/country_name/<input_country_name>/date_range', methods=['GET'])
+def api_country_name(input_country_name: str="") -> tuple[dict, int]:
     """
-    Flask route for '/api/name' path/endpoint. Return all ISO 3166 updates for the 
-    inputted country name/names. A closeness function is used to find the most 
-    approximate name to a high degree from the one input. If invalid name or no 
-    matching name found then return error. Route can accept the path with or 
-    without the trailing slash.
+    Flask route for '/api/country_name' path/endpoint. Return all ISO 3166 updates for the 
+    inputted country name/names, as they are commonly known in English. A closeness 
+    function is used to find the most approximate name to a high degree from the one input. 
+    If invalid name or no matching name found then return error. Route can accept the path 
+    with or without the trailing slash.
 
     Parameters
     ==========
-    :input_name: string
+    :input_country_name: str (default="")
         one or more country names as they are commonly known in english, according
         to the ISO 3166-1.
 
@@ -522,22 +379,31 @@ def api_name(input_name: str="") -> tuple[dict, int]:
     alpha2_code = []
     names = []    
 
-    #set error path for function error messages
-    error_message['path'] = request.base_url
-
     #if no input parameters set then return error message
-    if (input_name == ""):
-        error_message["message"] = "The name input parameter cannot be empty."
-        return jsonify(error_message), 400
+    if (input_country_name == ""):
+        return jsonify(create_error_message("The name input parameter cannot be empty.", request.url)), 400 
+    
+    #parse likeness query string param, used as a % cutoff for likeness of subdivision names, raise error if invalid type or value input
+    try:
+        search_likeness_score = int(request.args.get('likeness', default="100").rstrip('/'))
+    except ValueError:
+        return jsonify(create_error_message("Likeness query string parameter must be an integer between 0 and 100.", request.url)), 400 
+
+    #raise error if likeness score isn't between 0 and 100
+    if not (0 <= search_likeness_score <= 100):
+        return jsonify(create_error_message("Likeness query string parameter value must be an between 0 and 100.", request.url)), 400 
+    
+    #pull sortBy query string parameter, that allows sorting by country code or publication date, descending/ascending
+    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
 
     #remove unicode space (%20) from input parameter
-    input_name = input_name.replace('%20', ' ').title()
+    input_country_name = input_country_name.replace('%20', ' ').title()
     
     #check if input country is in above list, if not add to sorted comma separated list    
-    if (input_name.upper() in name_comma_exceptions):
-        names = [input_name]
+    if (input_country_name.upper() in name_comma_exceptions):
+        names = [input_country_name]
     else:
-        names = sorted(input_name.split(','))
+        names = sorted(input_country_name.split(','))
     
     #iterate over list of names, convert country names from names_converted dict, if applicable
     for name_ in range(0, len(names)):
@@ -553,92 +419,105 @@ def api_name(input_name: str="") -> tuple[dict, int]:
     #iterate over all input country names, get corresponding 2 letter alpha-2 code
     for name_ in names:
 
-        #using thefuzz library, get all countries that match the input country name
+        #using thefuzz library, get all countries that match the input country name, 
+        # by default an exact match is sought, but the % likeness the match has to be can be reduced using likeness parameter 
         name_matches = process.extract(name_.upper(), all_names_no_space, scorer=fuzz.ratio)
-        
-        #return error if no matching country name found
-        if (name_matches == []):           
-            #return error if country name not found
-            error_message["message"] = "No matching country name found for input: {}.".format(name_)
-            return jsonify(error_message), 400
-        elif (name_matches[0][1] <70):
-            if (name_matches[0][1] >60):
-                #return error if country name not found
-                error_message["message"] = "No matching country name found for input: {}, did you mean {}?".format(name_, name_matches[0][0].title())
+
+        #filter all matches above the likeness threshold
+        valid_matches = [match for match in name_matches if match[1] >= search_likeness_score]
+
+        #% of likeness that a country name has to be to an erroneous input name
+        country_name_suggestion_threshold = 75  
+
+        #if no exact match found, return error message with suggested similar country name
+        if not valid_matches:
+            if name_matches and name_matches[0][1] >= country_name_suggestion_threshold:
+                suggestion = name_matches[0][0].title()
+                error_message= f"No matching country name found for input: {name_}, did you mean {suggestion}?"
             else:
-                error_message["message"] = "No matching country name found for input: {}.".format(name_)
-            return jsonify(error_message), 400
+                error_message = f"No matching country name found for input: {name_}."
+            return jsonify(create_error_message(error_message, request.url)), 400
+
+        #iterate over valid matches and append to output object
+        for match_name, score in valid_matches:
+            alpha2 = iso3166.countries_by_name[match_name.upper()].alpha2
+            if alpha2 not in iso3166_updates_:
+                iso3166_updates_[alpha2] = all_iso3166_updates[alpha2]
 
         #use iso3166 package to find corresponding alpha-2 code from its name
         alpha2_code.append(iso3166.countries_by_name[name_matches[0][0].upper()].alpha2)
     
-    #get country data from ISO3166-2 object, using alpha-2 code
+    #get country data from ISO 3166-2 object, using alpha-2 code
     for code in alpha2_code:
         iso3166_updates_[code] = all_iso3166_updates[code]
 
+    #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
+    if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(iso3166_updates_) > 1:
+        iso3166_updates_ = sort_by_date(iso3166_updates_, date_asc_desc=sort_by)
+
     return jsonify(iso3166_updates_), 200
 
-@app.route('/api/year/<input_year>/name/<input_name>', methods=['GET'])
-@app.route('/api/name/<input_name>/year/<input_year>', methods=['GET'])
-@app.route('/year/<input_year>/name/<input_name>', methods=['GET'])
-@app.route('/name/<input_name>/year/<input_year>', methods=['GET'])
-def api_name_year(input_name: str="", input_year: str="") -> tuple[dict, int]:
+@app.route('/api/year/<input_year>/country_name/<input_country_name>', methods=['GET'])
+@app.route('/api/country_name/<input_country_name>/year/<input_year>', methods=['GET'])
+@app.route('/year/<input_year>/country_name/<input_country_name>', methods=['GET'])
+@app.route('/country_name/<input_country_name>/year/<input_year>', methods=['GET'])
+@app.route('/api/year/<input_year>/country_name/', defaults={'input_country_name': ""}, methods=['GET'])
+@app.route('/api/country_name/<input_country_name>/year/', defaults={'input_year': ""}, methods=['GET'])
+def api_country_name_year(input_country_name: str="", input_year: str="") -> tuple[dict, int]:
     """
-    Flask route for '/api/name' + '/api/year' path/endpoint. Return all ISO 3166 updates 
-    for the inputted country name/names + year, list of years, year range or greater than 
-    or less than input year. A closeness function is used to find the most approximate 
-    name to a high degree from the one input. If invalid name or no matching name found, 
-    or invalid year/years then return error. Route can accept the path with or without 
-    the trailing slash.
-    
+    Flask route for '/api/country_name/year' path/endpoint. Return all ISO 3166 updates for the 
+    inputted country name/names and the selected years, year range, greater than/less than a year 
+    or not equal to a year. A closeness function is used to find the most approximate name to a 
+    high degree from the one input. If invalid name or no matching name found then return error. 
+
     Parameters
     ==========
-    :input_name: string
-        1 or more country names as they are most commonly known in English, according to the 
-        ISO 3166-1.
-    :input_year: string
-        year, comma separated list of years, or year range to get updates from. Can also accept 
-        greater than or less than symbol, returning updates greater than/less than specified year.
+    :input_country_name: str (default="")
+        one or more country names as they are commonly known in english, according
+        to the ISO 3166-1.
+    :input_year: str (default="")
+        year, comma separated list of years, or year range to get updates from. Can 
+        also accept greater than or less than symbol returning updates greater 
+        than/less than specified year or updates not equal to year/list of years.
 
     Returns 
     =======
     :iso3166_updates: json
-        jsonified response of iso3166 updates per input country name and year.
+        jsonified response of iso3166 updates per country name/names.
     :status_code: int
-        response status code. 200 is a successful response, 400 means there was an invalid 
-        parameter input.
+        response status code. 200 is a successful response, 400 means there was an 
+        invalid parameter input.
     """
     #initialise vars
-    iso3166_updates = {}
-    names = []
-    year = []
+    iso3166_updates_ = {}
     alpha2_code = []
-    year_range = False
-    greater_than = False
-    less_than = False
-    
-    #path for error message
-    error_message['path'] = request.base_url
-    
-    #parse alpha code parameter, sort, uppercase and remove any whitespace
-    if (input_year != ""):
-        year = sorted(input_year.replace(' ', '').replace('%20', '').split(','))
+    names = []    
 
-    #iterate over all years, convert > or < symbol from unicode to string ("%3E" and "%3C", respectively)
-    for y in range(0, len(year)):
-        if ("%3E" in year[y]):
-            year[y] = ">" + year[y][3:]
-        elif ("%3C" in year[y]):
-            year[y] = "<" + year[y][3:]
+    #if no input parameters set then return error message
+    if (input_country_name == ""):
+        return jsonify(create_error_message("The name input parameter cannot be empty.", request.url)), 400 
+    
+    #parse likeness query string param, used as a % cutoff for likeness of subdivision names, raise error if invalid type or value input
+    try:
+        search_likeness_score = int(request.args.get('likeness', default="100").rstrip('/'))
+    except ValueError:
+        return jsonify(create_error_message("Likeness query string parameter must be an integer between 0 and 100.", request.url)), 400 
+
+    #raise error if likeness score isn't between 0 and 100
+    if not (0 <= search_likeness_score <= 100):
+        return jsonify(create_error_message("Likeness query string parameter value must be an between 0 and 100.", request.url)), 400 
+    
+    #pull sortBy query string parameter, that allows sorting by country code or publication date
+    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
 
     #remove unicode space (%20) from input parameter
-    input_name = input_name.replace('%20', ' ').title()
-
+    input_country_name = input_country_name.replace('%20', ' ').title()
+    
     #check if input country is in above list, if not add to sorted comma separated list    
-    if (input_name.upper() in name_comma_exceptions):
-        names = [input_name]
+    if (input_country_name.upper() in name_comma_exceptions):
+        names = [input_country_name]
     else:
-        names = sorted(input_name.split(','))
+        names = sorted(input_country_name.split(','))
     
     #iterate over list of names, convert country names from names_converted dict, if applicable
     for name_ in range(0, len(names)):
@@ -654,518 +533,465 @@ def api_name_year(input_name: str="", input_year: str="") -> tuple[dict, int]:
     #iterate over all input country names, get corresponding 2 letter alpha-2 code
     for name_ in names:
 
-        #using thefuzz library, get all countries that match the input country name
-        name_matches = process.extract(name_.upper(), all_names_no_space)
+        #using thefuzz library, get all countries that match the input country name, 
+        # by default an exact match is sought, but the % likeness the match has to be can be reduced using likeness parameter 
+        name_matches = process.extract(name_.upper(), all_names_no_space, scorer=fuzz.ratio)
 
-        #return error if no matching country name found
-        if (name_matches == []):           
-            #return error if country name not found
-            error_message["message"] = "No matching country name found for input: {}.".format(name_)
-            return jsonify(error_message), 400
-        elif (name_matches[0][1] <70):
-            if (name_matches[0][1] >60):
-                #return error if country name not found
-                error_message["message"] = "No matching country name found for input: {}, did you mean {}?".format(name_, name_matches[0][0].title())
+        #filter all matches above the likeness threshold
+        valid_matches = [match for match in name_matches if match[1] >= search_likeness_score]
+
+        #% of likeness that a country name has to be to an erroneous input name
+        country_name_suggestion_threshold = 75  
+
+        #if no exact match found, return error message with suggested similar country name
+        if not valid_matches:
+            if name_matches and name_matches[0][1] >= country_name_suggestion_threshold:
+                suggestion = name_matches[0][0].title()
+                error_message= f"No matching country name found for input: {name_}, did you mean {suggestion}?"
             else:
-                error_message["message"] = "No matching country name found for input: {}.".format(name_)
-            return jsonify(error_message), 400
-        
+                error_message = f"No matching country name found for input: {name_}."
+            return jsonify(create_error_message(error_message, request.url)), 400
+
+        #iterate over valid matches and append to output object
+        for match_name, score in valid_matches:
+            alpha2 = iso3166.countries_by_name[match_name.upper()].alpha2
+            if alpha2 not in iso3166_updates_:
+                iso3166_updates_[alpha2] = all_iso3166_updates[alpha2]
+
         #use iso3166 package to find corresponding alpha-2 code from its name
         alpha2_code.append(iso3166.countries_by_name[name_matches[0][0].upper()].alpha2)
     
-    #validate format of year input parameter: 
-    #a '-' separating 2 years implies a year range of sought country updates
-    #a ',' separating 2 years implies a list of years
-    #a '>' before year means get all country updates greater than or equal to specified year
-    #a '<' before year means get all country updates less than specified year
-    if (year != []):
-        if ('-' in year[0]):
-            year_range = True
-            year = year[0].split('-')
-            #if years in year range input are wrong way around then swap them
-            if (year[0] > year[1]):
-                year[0], year[1] = year[1], year[0]
-            #only 2 years should be included in input parameter when using a year range
-            if (len(year) > 2):
-                year = []
-                year_range = False
-        elif (',' in year[0]):
-            #split years into comma separated list of multiple years if multiple years are input
-            year = year[0].split(',')
-        #parse array if using greater than symbol
-        elif ('>' in year[0]):
-            year = year[0].split('>')
-            greater_than = True
-            year.remove('')
-            #after removing >, only 1 year should be left in year parameter
-            if (len(year) > 1):
-                year = []
-                greater_than = False
-        #parse array if using less than symbol
-        elif ('<' in year[0]):
-            year = year[0].split('<')
-            less_than = True
-            year.remove('')
-            #after removing <, only 1 year should be left in year parameter
-            if (len(year) > 1):
-                year = []
-                less_than = False
-    
-    #iterate over all years, validate each are correct format, raise error if invalid year
-    for year_ in year:
-        #skip to next iteration if < or > symbol
-        if (year_ == '<' or year_ == '>'):
-            continue
-        #validate each year format using regex, raise error if invalid year input
-        if not (bool(re.match(r"^1[0-9][0-9][0-9]$|^2[0-9][0-9][0-9]$", year_))):
-            error_message["message"] = f"Invalid year input {''.join(year)}, year should be >1999 and <={datetime.now().year}." 
-            return jsonify(error_message), 400
-    
-    #get updates from iso3166_updates object per country using alpha-2 code
-    if (alpha2_code == [] and year == []):
-        iso3166_updates = all_iso3166_updates
-    else:
-        for code in alpha2_code:
-            iso3166_updates[code] = all_iso3166_updates[code]
+    #get country data from ISO 3166-2 object, using alpha-2 code
+    for code in alpha2_code:
+        iso3166_updates_[code] = all_iso3166_updates[code]
+
+    #parse and validate input year parameter 
+    year, year_range, year_greater_than, year_less_than, year_not_equal, year_error, year_error_message = validate_year(input_year)
+
+    #return error if error found when parsing and validating the year input parameter
+    if (year_error):
+        return jsonify(create_error_message(year_error_message, request.url)), 400   
     
     #temporary updates object
     temp_iso3166_updates = {}
 
-    #if no valid alpha-2 codes input, use all alpha-2 codes from iso3166 and all updates data
-    if ((year != [] and alpha2_code == []) or ((year == [] or year != []) and alpha2_code == [])):
-        input_alpha_codes  = list(iso3166.countries_by_alpha2.keys())
-        input_data = all_iso3166_updates
-    #else set input alpha-2 codes to inputted and use corresponding updates data
-    else:
-        input_alpha_codes = alpha2_code
-        input_data = iso3166_updates
-    
     #use temp object to get updates data either for specific country/alpha-2 code or for all
     #countries, dependant on input_alpha_codes and input_data vars above
     if (year != []):
-        for code in input_alpha_codes:
+        for code in alpha2_code:
             temp_iso3166_updates[code] = []
-            for update in range(0, len(input_data[code])):
+            for update in range(0, len(iso3166_updates_[code])):
 
-                #convert year in Date Issued column to string of year, remove "corrected" date if applicable
-                if ("corrected" in input_data[code][update]["Date Issued"]):
-                    temp_year = str(datetime.strptime(re.sub("[(].*[)]", "", input_data[code][update]["Date Issued"]).replace(' ', "").
+                #convert year in Date Issued column to str of year, remove "corrected" date if applicable
+                if ("corrected" in iso3166_updates_[code][update]["Date Issued"]):
+                    temp_year = str(datetime.strptime(re.sub("[(].*[)]", "", iso3166_updates_[code][update]["Date Issued"]).replace(' ', "").
                                                       replace(".", '').replace('\n', ''), '%Y-%m-%d').year)
                 else:
-                    temp_year = str(datetime.strptime(input_data[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
+                    temp_year = str(datetime.strptime(iso3166_updates_[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d').year)
 
-                #if year range true then get country updates within specified range, inclusive
+                #if year range true then get country updates within specified range inclusive
                 if (year_range):
                     if (temp_year != "" and (temp_year >= year[0] and temp_year <= year[1])):
-                        temp_iso3166_updates[code].append(input_data[code][update])
+                        temp_iso3166_updates[code].append(iso3166_updates_[code][update])
                 
-                #if greater than true then get country updates greater than specified year, inclusive
-                elif (greater_than):
+                #if greater than true then get country updates greater than or equal to specified year
+                elif (year_greater_than):
                     if (temp_year != "" and (temp_year >= year[0])):
-                        temp_iso3166_updates[code].append(input_data[code][update])    
+                        temp_iso3166_updates[code].append(iso3166_updates_[code][update])    
 
                 #if less than true then get country updates less than specified year 
-                elif (less_than):
+                elif (year_less_than):
                     if (temp_year != "" and (temp_year < year[0])):
-                        temp_iso3166_updates[code].append(input_data[code][update]) 
+                        temp_iso3166_updates[code].append(iso3166_updates_[code][update]) 
 
-                #if greater than & less than not true then get country updates equal to specified year
-                elif not (greater_than and less_than):
+                #get all country updates not equal to current year
+                elif (year_not_equal):
+                    if (temp_year != "" and temp_year not in year):
+                        temp_iso3166_updates[code].append(iso3166_updates_[code][update])
+
+                #get country updates equal to specified year
+                else:
                     for year_ in year:
                         if (temp_year != "" and (temp_year == year_)):
-                            temp_iso3166_updates[code].append(input_data[code][update])
-            
-            #if current alpha-2 has no rows for selected year/year range, remove from temp object
+                            temp_iso3166_updates[code].append(iso3166_updates_[code][update])
+
+            #if current alpha-2 has no rows for selected year/year range etc, remove from temp object
             if (temp_iso3166_updates[code] == []):
                 temp_iso3166_updates.pop(code, None)
     else:
-        temp_iso3166_updates = input_data
-    
-    #set main updates dict to temp one
-    iso3166_updates = temp_iso3166_updates
+        temp_iso3166_updates = iso3166_updates_
 
-    return jsonify(iso3166_updates), 200
+    #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
+    if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(temp_iso3166_updates) > 1:
+        iso3166_updates = sort_by_date(temp_iso3166_updates, date_asc_desc=sort_by)
+    else:
+        #set main updates dict to temp one
+        iso3166_updates_ = temp_iso3166_updates
 
-@app.route('/api/months/<input_month>', methods=['GET'])
-@app.route('/api/months', methods=['GET'])
-@app.route('/months/<input_month>', methods=['GET'])
-@app.route('/months/<input_month>/alpha', methods=['GET'])
-@app.route('/months/<input_month>/name', methods=['GET'])
-@app.route('/months', methods=['GET'])
-def api_months(input_month: str="") -> tuple[dict, int]:
+    return jsonify(iso3166_updates_), 200
+
+@app.route('/api/search/', methods=['GET'])
+@app.route('/api/search/<input_search_term>', methods=['GET'])
+@app.route('/api/search/<input_search_term>/year', methods=['GET'])
+@app.route('/api/search/<input_search_term>/date_range', methods=['GET'])
+@app.route('/search/<input_search_term>', methods=['GET'])
+@app.route('/search/<input_search_term>/year', methods=['GET'])
+@app.route('/search/<input_search_term>/date_range', methods=['GET'])
+def api_search(input_search_term: str="") -> tuple[dict, int]:
     """
-    Flask route for '/api/months' path/endpoint. Return all ISO 3166 updates for 
-    the previous number of months specified by month parameter. If invalid month 
-    input then return error. Route can accept the path with or without the 
-    trailing slash.
+    Flask route for '/api/search' path/endpoint. Return all ISO 3166 updates for the 
+    inputted search terms/keywords. A closeness function via thefuzz package is used 
+    to find the most approximate update objects that contain the inputted search terms. 
+    A likeness query string parameter allows for you to set the % of likeness that the 
+    attributes in the updates (Change & Desc of Change) have to be to the input search 
+    terms, by default a score of 100 (meaning an exact match) is implemented. 
+    
+    The search results are sorted by the highest matching score first. This matching
+    score is returned by default to the output, but this can be disabled by setting
+    the query string parameter excludeMatchScore to 1.
+
+    If a date is inputted to the endpoint, the Date Issued attribute will be explicitly 
+    searched as well. If invalid search term or no matching updates found then return error. 
 
     Parameters
     ==========
-    :input_month: string
-        number of past months to get published updates from, inclusive.
+    :input_search_term: str (default-"")
+        1 or more sought search terms.
+
+    Returns
+    =======
+    :iso3166_updates: json
+        jsonified response of iso3166 updates per input search term.
+    :status_code: int
+        response status code. 200 is a successful response, 400 means there was an invalid 
+        parameter input.
+    """
+    #if no input parameters set then return error message
+    if (input_search_term == ""):
+        return jsonify(create_error_message("The search input parameter cannot be empty.", request.url)), 400 
+    
+    #pull sortBy query string parameter, that allows sorting by country code or publication date, ascending/descending
+    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+
+    print("search_terms before", input_search_term)
+
+    #split search terms into comma separated list, remove all whitespace & unicode characters
+    decoded_term = unquote(input_search_term)
+    search_terms = [term.strip().lower() for term in decoded_term.split(",")]
+    
+    #parse likeness query string param, used as a % cutoff for likeness of subdivision names, raise error if invalid type or value input
+    try:
+        search_likeness_score = int(request.args.get('likeness', default="100").rstrip('/'))
+    except ValueError:
+        return jsonify(create_error_message("Likeness query string parameter must be an integer between 0 and 100.", request.url)), 400 
+
+    #raise error if likeness score isn't between 0 and 100
+    if not (0 <= search_likeness_score <= 100):
+        return jsonify(create_error_message("Likeness query string parameter value must be between 0 and 100.", request.url)), 400 
+
+    #parse query string parameter that allows user to exclude the Matching % score from search results, by default it is included in results
+    exclude_match_score = (request.args.get('excludeMatchScore') or request.args.get('excludematchscore') or "false").lower().rstrip('/') in ['true', '1', 'yes']
+
+    #store search results
+    search_results = []
+
+    #iterate through main country updates data object 
+    for country_code, updates in all_iso3166_updates.items():
+        for update in updates:
+            #combine main change and description attributes into one search space, add date issued attributes to separate var
+            combined_text = f"{update['Change']} {update.get('Description of Change', '')}".lower()
+            full_text = combined_text + " " + update.get('Date Issued', '').strip().lower()
+
+            #iterate over input search terms 
+            for term in search_terms:
+                score = 0
+                input_date_original = convert_date_format(term)
+                temp_search_result = {"Country Code": country_code, **update}
+
+                #include date only if search term is a date
+                if input_date_original is not None:
+                    input_date_converted = str(input_date_original).split(" ")[0]
+                    full_text = combined_text + " " + update.get('Date Issued', '').strip().lower()
+                    score = fuzz.partial_ratio(input_date_converted, full_text)
+                
+                #looking for exact matches
+                elif search_likeness_score == 100:
+                    full_text = combined_text  # exclude date
+                    #if spaces in search term text
+                    if " " in term:
+                        if term in full_text:
+                            score = 100
+                        else:
+                            score = 0
+                    #use regex to search for keyword in text
+                    else:
+                        words = re.findall(r'\b\w+\b', full_text)
+                        if term in words:
+                            score = 100
+                        else:
+                            score = 0
+                #get matching results using fuzzy search
+                else:
+                    full_text = combined_text  # exclude date
+                    score = fuzz.partial_ratio(term, full_text)
+
+                #add object to search results var if the matching score is above search likeness
+                if score >= search_likeness_score:
+                    temp_search_result["Match Score"] = score
+                    search_results.append(temp_search_result)
+
+    #return message that no search results were found
+    if not search_results:
+        return jsonify({"Message": f"No matching updates found with the given search term(s): {", ".join(search_terms)}."}), 200
+
+    #exclude matching score % if query string parameter is set
+    if exclude_match_score:
+        grouped_results = {}
+
+        #iterate through each search result object, remove matchScore, remove Country Code attribute
+        for item in search_results:
+            item.pop("Match Score", None)
+            cc = item["Country Code"]
+            item_copy = {k: v for k, v in item.items() if k != "Country Code"}  #remove top-level key
+            grouped_results.setdefault(cc, []).append(item_copy)
+
+        #if sort by parameters input, resort the objects
+        if sort_by in ['datedesc', 'dateasc']:
+            for cc in grouped_results:
+                grouped_results[cc] = sort_by_date(grouped_results[cc])
+
+        return jsonify(grouped_results), 200
+    else:
+        #match score attribute included in output, sort using it, highest match score first 
+        search_results.sort(key=lambda x: x["Match Score"], reverse=True)
+
+    #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
+    if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(search_results) > 1:
+        search_results = sort_by_date(search_results, date_asc_desc=sort_by)
+
+    return jsonify(search_results), 200
+
+@app.route('/api/date_range/<input_date_range>', methods=['GET'])
+@app.route('/api/date_range', methods=['GET'])
+@app.route('/date_range/<input_date_range>', methods=['GET'])
+@app.route('/date_range/<input_date_range>/alpha', methods=['GET'])
+@app.route('/date_range', methods=['GET'])
+def api_date_range(input_date_range: str="") -> tuple[dict, int]:
+    """
+    Flask route for '/api/date_range' path/endpoint. Return all ISO 3166 
+    updates published within the specified input date range, inclusive.
+    The two dates in the range should be in a comma separated list in the
+    format YYYY-MM-DD, although other formats are supported. The endpoint 
+    can also accept a single date, which will act as the start date to get 
+    updates from, with the current date being the end date.
+
+    Parameters
+    ==========
+    :input_date_range: str (default="")
+        start and end date to get updates from. If a single date input it will 
+        act as the start date, with the current date being the end date. 
+
+    Returns
+    =======
+    :iso3166_updates: json
+        jsonified response of iso3166 updates published within date range. 
+    :status_code: int
+        response status code. 200 is a successful response, 400 means there was an invalid 
+        parameter input.
+    """
+    #initialise vars
+    iso3166_updates = {}
+
+    #pull sortBy query string parameter, that allows sorting publication date, ascending/descending
+    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+
+    #return error if input data empty
+    if (input_date_range == ""):
+        return jsonify(create_error_message("Input date cannot be empty, expecting at least one date in the format YYYY-MM-DD.", request.url)), 400 
+    
+    #split multiple dates into list, remove whitespace
+    date_parts = input_date_range.split(",")
+    date_parts = [d.strip() for d in date_parts] 
+
+    #if only one date input, treat this as the starting date, setting the end date as today
+    if len(date_parts) == 1:
+        date_parts.append(datetime.today().strftime("%Y-%m-%d"))
+    elif len(date_parts) != 2:
+        return jsonify(create_error_message(f"Date input must contain either one or two dates: {date_parts}.", request.url)), 400 
+
+    #extract start and end date and convert each
+    start_date, end_date = date_parts[0], date_parts[1]
+    start_date = convert_date_format(start_date)
+    end_date = convert_date_format(end_date)
+
+    #return error if start or end date can't be converted into valid format 
+    if (start_date is None or end_date is None):
+        return jsonify(create_error_message(f"Invalid date format, expected YYYY-MM-DD format: {input_date_range}.", request.url)), 400 
+
+    #swap dates if start_date is later than end_date
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    #iterate over all updates data, adding all data that's within desired date range
+    for country_code, updates in all_iso3166_updates.items():
+        filtered_changes = []
+        for update in updates:
+
+            #parse the original publication date from attribute
+            original_date_str = update["Date Issued"].split(" ")[0]  
+            original_date = datetime.strptime(original_date_str, "%Y-%m-%d")
+
+            #parse corrected date from publication date attribute, if applicable 
+            cleaned_date_row = re.sub(r"\(.*?\)", "", update["Date Issued"])
+            corrected_date = re.sub(r'\s+', ' ', cleaned_date_row.replace('.', '').strip())
+
+            #convert corrected date to datetime object, if applicable 
+            if corrected_date:
+                corrected_date = datetime.strptime(corrected_date, "%Y-%m-%d")
+            
+            #track if current date has been added to object
+            update_added = False
+
+            #check if the original date falls within the input range
+            if (start_date <= original_date <= end_date): 
+                filtered_changes.append(update)
+                update_added = True
+
+            #check if the corrected date falls within the input range
+            if (corrected_date):
+                if (start_date <= corrected_date <= end_date):
+                    if not (update_added):
+                        filtered_changes.append(update)
+
+        #add filtered changes to main date filtered object
+        if filtered_changes:
+            iso3166_updates[country_code] = filtered_changes
+
+    #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
+    if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(iso3166_updates) > 1:
+        iso3166_updates = sort_by_date(iso3166_updates, date_asc_desc=sort_by)
+
+    return jsonify(iso3166_updates), 200
+
+@app.route('/api/date_range/<input_date_range>/alpha/<input_alpha>', methods=['GET'])
+@app.route('/api/alpha/<input_alpha>/date_range/<input_date_range>', methods=['GET'])
+@app.route('/date_range/<input_date_range>/alpha/<input_alpha>', methods=['GET'])
+@app.route('/alpha/<input_alpha>/date_range/<input_date_range>', methods=['GET'])
+@app.route('/api/date_range/<input_date_range>/alpha/', defaults={'input_alpha': ""}, methods=['GET'])
+@app.route('/api/alpha/<input_alpha>/date_range/', defaults={'input_date_range': ""}, methods=['GET'])
+def api_date_range_alpha(input_alpha: str="", input_date_range: str="") -> tuple[dict, int]:
+    """
+    Flask route for '/api/alpha' + '/api/date_range' path/endpoint. Return all ISO 3166 
+    updates for the inputted ISO 3166-1 alpha-2, alpha-3 or numeric country code/codes 
+    + a specified date/date range. The alpha-3 and numeric codes will be converted into 
+    their corresponding alpha-2 code. If an invalid alpha code or date range input then 
+    return error. 
+    
+    Parameters
+    ==========
+    :input_alpha: str (default="")
+        1 or more ISO 3166-1 alpha-2, alpha-3 or numeric country codes.
+    :input_date_range: str (default="")
+        start and end date to get updates from. If a single date input it will 
+        act as the start date, with the current date being the end date. 
 
     Returns 
     =======
     :iso3166_updates: json
-        jsonified response of iso3166 updates per input month.
+        jsonified response of iso3166 updates per input alpha-2 code and date range.
     :status_code: int
-        response status code. 200 is a successful response, 400 means there was an invalid 
-        parameter input.
-    """
-    #set path url for error message object
-    error_message['path'] = request.base_url
-    
-    #if no input month parameter then return error message
-    if (input_month == ""):
-        error_message["message"] = "The month input parameter cannot be empty." 
-        return jsonify(error_message), 400    
-
-    #return error if invalid month value input, skip if month range input
-    if not ('-' in input_month):
-        if not (str(input_month).isdigit()):
-            error_message["message"] = f"Invalid month input: {''.join(input_month)}."
-            return jsonify(error_message), 400
-
-    #get current datetime object
-    current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
-    
-    #parse from date query string param, used for testing the /months endpoints, the from date will be the starting date used instead of the current date
-    from_date = request.args.get('from_date')
-
-    #convert from_date parameter into datetime object, set from_date as current datetime param value, if conversion fails set to None
-    if not (from_date is None):
-        try:
-            from_date = datetime.strptime(from_date.replace('\n', ''), '%Y-%m-%d')
-            current_datetime = from_date
-        except:
-            from_date = None
-
-    #temporary updates object
-    temp_iso3166_updates = {}
-
-    #get all alpha-2 codes from iso3166 and all updates data before filtering by month
-    input_alpha_codes = list(iso3166.countries_by_alpha2.keys())
-
-    #remove XK (Kosovo) from list, if applicable
-    if ("XK" in input_alpha_codes):
-        input_alpha_codes.remove("XK")
-    
-    #filter out updates that are not within specified month range
-    for code in input_alpha_codes:
-        temp_iso3166_updates[code] = [] 
-        for update in range(0, len(all_iso3166_updates[code])):
-
-            #convert year in Date Issued column to date object, remove "corrected" date if applicable
-            if ("corrected" in all_iso3166_updates[code][update]["Date Issued"]):
-                row_date = datetime.strptime(re.sub("[(].*[)]", "", all_iso3166_updates[code][update]["Date Issued"]).replace(' ', "").
-                                                    replace(".", '').replace('\n', ''), '%Y-%m-%d')
-            else:
-                row_date = datetime.strptime(all_iso3166_updates[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d')
-            
-            #calculate difference in dates
-            date_diff = relativedelta.relativedelta(current_datetime, row_date)
-
-            #calculate months difference
-            diff_months = date_diff.months + (date_diff.years * 12)
-
-            #parse parameter to get range of months to get updates from
-            if ('-' in input_month):
-                start_month, end_month = int(input_month.split('-')[0]), int(input_month.split('-')[1])
-                #if months in month range input are wrong way around then swap them
-                if (start_month > end_month):
-                    start_month, end_month = end_month, start_month
-                #if current updates row is >= start month input param and <= end month then add to temp object
-                if ((diff_months >= start_month) and (diff_months <= end_month)):
-                    temp_iso3166_updates[code].append(all_iso3166_updates[code][update])
-            else:
-                #if current updates row is <= month input param then add to temp object
-                if (diff_months <= int(input_month)):
-                    temp_iso3166_updates[code].append(all_iso3166_updates[code][update])
-
-        #if current alpha-2 has no rows for selected month range, remove from temp object
-        if (temp_iso3166_updates[code] == []):
-            temp_iso3166_updates.pop(code, None)
-
-    #set main updates dict to temp one
-    iso3166_updates = temp_iso3166_updates
-
-    return jsonify(iso3166_updates), 200
-
-@app.route('/api/months/<input_month>/alpha/<input_alpha>', methods=['GET'])
-@app.route('/api/alpha/<input_alpha>/months/<input_month>', methods=['GET'])
-@app.route('/months/<input_month>/alpha/<input_alpha>', methods=['GET'])
-@app.route('/alpha/<input_alpha>/months/<input_month>', methods=['GET'])
-def api_months_alpha(input_month: str="", input_alpha: str="") -> tuple[dict, int]:
-    """
-    Flask route for '/api/months' + '/api/alpha' path/endpoint. Return all ISO 3166 
-    updates for the previous number of months specified by month parameter, for a 
-    specified country or list of countries via their ISO 3166-1 alpha-2, alpha-3 or 
-    numeric country codes. The alpha-3 and numeric codes  will be converted into their 
-    corresponding alpha-2 code. If an invalid alpha code or invalid month input then 
-    return error. Route can accept the path with or without the trailing slash.
-
-    Parameters
-    ==========
-    :input_month: string
-        number of past months to get published updates from, inclusive.
-    :input_alpha: string
-        1 or more ISO 3166-1 alpha-2, alpha-3 or numeric country codes.
-
-    Returns
-    =======
-    :iso3166_updates: json
-        jsonified response of iso3166 updates per input month and country alpha code.
-    :status_code: int
-        response status code. 200 is a successful response, 400 means there was an invalid 
-        parameter input.
+        response status code. 200 is a successful response, 400 means there was an 
+        invalid parameter input.
     """
     #initialise vars
     iso3166_updates = {}
-    alpha2_code = []
 
-    #set path url for error message object
-    error_message['path'] = request.base_url
-    
-    #return error if invalid month value input, skip if month range input
-    if not ('-' in input_month):
-        if not (str(input_month).isdigit()):
-            error_message["message"] = f"Invalid month input: {''.join(input_month)}."
-            return jsonify(error_message), 400
+    #pull sortBy query string parameter, that allows sorting by publication date, ascending/descending
+    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
 
-    #get current datetime object
-    current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
+    #return error if input data empty
+    if (input_date_range == ""):
+        return jsonify(create_error_message("Input date cannot be empty, expecting at least one date in the format YYYY-MM-DD.", request.url)), 400 
 
-    #parse from date query string param, used for testing the /months endpoints, the from date will be the starting date used instead of the current date
-    from_date = request.args.get('from_date')
+    #if no input alpha parameter then return error message
+    if (input_alpha == ""):
+        return jsonify(create_error_message("The alpha code input parameter cannot be empty." , request.url)), 400 
 
-    #convert from_date parameter into datetime object, set from_date as current datetime param value, if conversion fails set to None
-    if not (from_date is None):
-        try:
-            from_date = datetime.strptime(from_date.replace('\n', ''), '%Y-%m-%d')
-            current_datetime = from_date
-        except:
-            from_date = None
+    #get the country updates data using the input alpha codes, return error if invalid codes input
+    try:
+        all_iso3166_updates = iso_updates[input_alpha]
+    except ValueError as ve:
+        return jsonify(create_error_message(str(ve) , request.url)), 400 
 
-    #parse alpha code parameter, split, uppercase, remove any whitespace and sort
-    alpha2_code = sorted(input_alpha.upper().replace(' ', '').replace('%20', '').split(','))
-    
-    #iterate over each input alpha code, validating and converting into its corresponding alpha-2, if applicable
-    for code in range(0, len(alpha2_code)):
-        #api can accept 3 letter alpha-3 or numeric code for country, this has to be converted into its alpha-2 counterpart
-        if (len(alpha2_code[code]) == 3):
-            temp_code = convert_to_alpha2(alpha2_code[code])
-            #return error message if invalid numeric code input
-            if (temp_code is None and alpha2_code[code].isdigit()):
-                error_message["message"] = f"Invalid ISO 3166-1 numeric country code input, cannot convert into corresponding alpha-2 code: {''.join(alpha2_code[code])}."
-                return jsonify(error_message), 400
-            #return error message if invalid alpha-3 code input
-            if (temp_code is None):
-                error_message["message"] = f"Invalid ISO 3166-1 alpha-3 country code input, cannot convert into corresponding alpha-2 code: {''.join(alpha2_code[code])}."
-                return jsonify(error_message), 400
-            alpha2_code[code] = temp_code
-        #use regex to validate format of alpha-2 codes, raise error if invalid code input
-        if not (bool(re.match(r"^[A-Z]{2}$", alpha2_code[code]))) or (alpha2_code[code] not in list(iso3166.countries_by_alpha2.keys()) or (alpha2_code[code] == "XK")):
-            error_message["message"] = f"Invalid ISO 3166-1 alpha country code input, no corresponding alpha-2 code found: {''.join(alpha2_code[code])}."
-            return jsonify(error_message), 400
-        
-    #get updates from iso3166_updates instance object per country using alpha-2 code
-    for code in alpha2_code:
-        iso3166_updates[code] = all_iso3166_updates[code]
-        
-    #temporary updates object
-    temp_iso3166_updates = {}
+    #split multiple dates into list, remove whitespace
+    date_parts = input_date_range.split(",")
+    date_parts = [d.strip() for d in date_parts] 
 
-    #filter out updates that are not within specified month range
-    for code in alpha2_code:
-        temp_iso3166_updates[code] = [] 
-        for update in range(0, len(iso3166_updates[code])):
+    #if only one date input, treat this as the starting date, setting the end date as today
+    if len(date_parts) == 1:
+        date_parts.append(datetime.today().strftime("%Y-%m-%d"))
+    elif len(date_parts) != 2:
+        return jsonify(create_error_message(f"Date input must contain either one or two dates: {date_parts}." , request.url)), 400 
 
-            #convert year in Date Issued column to date object, remove "corrected" date if applicable
-            if ("corrected" in iso3166_updates[code][update]["Date Issued"]):
-                row_date = datetime.strptime(re.sub("[(].*[)]", "", iso3166_updates[code][update]["Date Issued"]).replace(' ', "").
-                                                    replace(".", '').replace('\n', ''), '%Y-%m-%d')
-            else:
-                row_date = datetime.strptime(iso3166_updates[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d')
+    #extra start and end date and convert each
+    start_date, end_date = date_parts[0], date_parts[1]
+    start_date = convert_date_format(start_date)
+    end_date = convert_date_format(end_date)
+
+    #return error if start or end date can't be converted into valid format 
+    if (start_date is None or end_date is None):
+        return jsonify(create_error_message(f"Invalid date format, expected YYYY-MM-DD format: {input_date_range}." , request.url)), 400 
+
+    #swap dates if start_date is later than end_date
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    #iterate over all updates data, adding all data that's within desired date range
+    for country_code, updates in all_iso3166_updates.items():
+        filtered_changes = []
+        for update in updates:
+
+            #parse the original publication date from attribute
+            original_date_str = update["Date Issued"].split(" ")[0]  
+            original_date = datetime.strptime(original_date_str, "%Y-%m-%d")
+
+            #parse corrected date from publication date attribute, if applicable 
+            cleaned_date_row = re.sub(r"\(.*?\)", "", update["Date Issued"])
+            corrected_date = re.sub(r'\s+', ' ', cleaned_date_row.replace('.', '').strip())
+
+            #convert corrected date to datetime object, if applicable 
+            if corrected_date:
+                corrected_date = datetime.strptime(corrected_date, "%Y-%m-%d")
             
-            #calculate difference in dates
-            date_diff = relativedelta.relativedelta(current_datetime, row_date)
+            #track if current date has been added to object
+            update_added = False
 
-            #calculate months difference
-            diff_months = date_diff.months + (date_diff.years * 12)
+            #check if the original date falls within the input range
+            if (start_date <= original_date <= end_date): 
+                filtered_changes.append(update)
+                update_added = True
 
-            #parse parameter to get range of months to get updates from
-            if ('-' in input_month):
-                start_month, end_month = int(input_month.split('-')[0]), int(input_month.split('-')[1])
-                #if months in month range input are wrong way around then swap them
-                if (start_month > end_month):
-                    start_month, end_month = end_month, start_month
-                #if current updates row is >= start month input param and <= end month then add to temp object
-                if ((diff_months >= start_month) and (diff_months <= end_month)):
-                    temp_iso3166_updates[code].append(iso3166_updates[code][update])
-            else:
-                #if current updates row is <= month input param then add to temp object
-                if (diff_months <= int(input_month)):
-                    temp_iso3166_updates[code].append(iso3166_updates[code][update])
+            #check if the corrected date falls within the input range
+            if (corrected_date):
+                if (start_date <= corrected_date <= end_date):
+                    if not (update_added):
+                        filtered_changes.append(update)
 
-        #if current alpha-2 has no rows for selected month range, remove from temp object
-        if (temp_iso3166_updates[code] == []):
-            temp_iso3166_updates.pop(code, None)
+        #add filtered changes to main date filtered object
+        if filtered_changes:
+            iso3166_updates[country_code] = filtered_changes
 
-    #set main updates dict to temp one
-    iso3166_updates = temp_iso3166_updates
-
-    return jsonify(iso3166_updates), 200
-
-@app.route('/api/months/<input_month>/name/<input_name>', methods=['GET'])
-@app.route('/api/name/<input_name>/months/<input_month>', methods=['GET'])
-@app.route('/months/<input_month>/name/<input_name>', methods=['GET'])
-@app.route('/name/<input_name>/months/<input_month>', methods=['GET'])
-def api_months_name(input_month: str="", input_name: str="") -> tuple[dict, int]:
-    """
-    Flask route for '/api/months' + '/api/name' path/endpoint. Return all ISO 3166 
-    updates for the previous number of months specified by month parameter, for a 
-    specified country or list of countries using their country name, as it is commonly
-    known in English. If an invalid country name or invalid month input then return 
-    error. Route can accept the path with or without the trailing slash.
-
-    Parameters
-    ==========
-    :input_month: string
-        number of past months to get published updates from, inclusive.
-    :input_name: string
-        1 or more ISO 3166-1 country names, as they are commonly known in English.
-
-    Returns
-    =======
-    :iso3166_updates: json
-        jsonified response of iso3166 updates per input month and country name.
-    :status_code: int
-        response status code. 200 is a successful response, 400 means there was an invalid 
-        parameter input.
-    """
-    #initialise vars
-    iso3166_updates = {}
-    names = []
-    alpha2_codes = []
-
-    #set path url for error message object
-    error_message['path'] = request.base_url
-    
-    #return error if invalid month value input, skip if month range input
-    if not ('-' in input_month):
-        if not (str(input_month).isdigit()):
-            error_message["message"] = f"Invalid month input: {''.join(input_month)}."
-            return jsonify(error_message), 400
-
-    #get current datetime object
-    current_datetime = datetime.strptime(datetime.today().strftime('%Y-%m-%d'), "%Y-%m-%d")
-
-    #parse from date query string param, used for testing the /months endpoints, the from date will be the starting date used instead of the current date
-    from_date = request.args.get('from_date')
-
-    #convert from_date parameter into datetime object, set from_date as current datetime param value, if conversion fails set to None
-    if not (from_date is None):
-        try:
-            from_date = datetime.strptime(from_date.replace('\n', ''), '%Y-%m-%d')
-            current_datetime = from_date
-        except:
-            from_date = None
-
-    #remove unicode space (%20) from input parameter
-    input_name = input_name.replace('%20', ' ').title()
-    
-    #check if input country is in above list, if not add to sorted comma separated list    
-    if (input_name.upper() in name_comma_exceptions):
-        names = [input_name]
-    else:
-        names = sorted(input_name.split(','))
-    
-    #iterate over list of names, convert country names from names_converted dict, if applicable
-    for name_ in range(0, len(names)):
-        if (names[name_].title() in list(names_converted.keys())):
-            names[name_] = names_converted[names[name_]]
-
-    #remove all whitespace in any of the country names
-    names = [name_.strip(' ') for name_ in names]
-
-    #get list of available country names from iso3166 library, remove whitespace
-    all_names_no_space = [name_.strip(' ') for name_ in list(iso3166.countries_by_name.keys())]
-    
-    #iterate over all input country names, get corresponding 2 letter alpha-2 code
-    for name_ in names:
-
-        #using thefuzz library, get all countries that match the input country name
-        name_matches = process.extract(name_.upper(), all_names_no_space, scorer=fuzz.ratio)
-        
-        #return error if no matching country name found
-        if (name_matches == []):           
-            #return error if country name not found
-            error_message["message"] = "No matching country name found for input: {}.".format(name_)
-            return jsonify(error_message), 400
-        elif (name_matches[0][1] <70):
-            if (name_matches[0][1] >60):
-                #return error if country name not found
-                error_message["message"] = "No matching country name found for input: {}, did you mean {}?".format(name_, name_matches[0][0].title())
-            else:
-                error_message["message"] = "No matching country name found for input: {}.".format(name_)
-            return jsonify(error_message), 400
-
-        #use iso3166 package to find corresponding alpha-2 code from its name
-        alpha2_codes.append(iso3166.countries_by_name[name_matches[0][0].upper()].alpha2)
-
-    #get updates from iso3166_updates instance object per country using alpha-2 code
-    for code in alpha2_codes:
-        iso3166_updates[code] = all_iso3166_updates[code]
-        
-    #temporary updates object
-    temp_iso3166_updates = {}
-
-    #filter out updates that are not within specified month range
-    for code in alpha2_codes:
-        temp_iso3166_updates[code] = [] 
-        for update in range(0, len(iso3166_updates[code])):
-
-            #convert year in Date Issued column to date object, remove "corrected" date if applicable
-            if ("corrected" in iso3166_updates[code][update]["Date Issued"]):
-                row_date = datetime.strptime(re.sub("[(].*[)]", "", iso3166_updates[code][update]["Date Issued"]).replace(' ', "").
-                                                    replace(".", '').replace('\n', ''), '%Y-%m-%d')
-            else:
-                row_date = datetime.strptime(iso3166_updates[code][update]["Date Issued"].replace('\n', ''), '%Y-%m-%d')
-            
-            #calculate difference in dates
-            date_diff = relativedelta.relativedelta(current_datetime, row_date)
-
-            #calculate months difference
-            diff_months = date_diff.months + (date_diff.years * 12)
-
-            #parse parameter to get range of months to get updates from
-            if ('-' in input_month):
-                start_month, end_month = int(input_month.split('-')[0]), int(input_month.split('-')[1])
-                #if months in month range input are wrong way around then swap them
-                if (start_month > end_month):
-                    start_month, end_month = end_month, start_month
-                #if current updates row is >= start month input param and <= end month then add to temp object
-                if ((diff_months >= start_month) and (diff_months <= end_month)):
-                    temp_iso3166_updates[code].append(iso3166_updates[code][update])
-            else:
-                #if current updates row is <= month input param then add to temp object
-                if (diff_months <= int(input_month)):
-                    temp_iso3166_updates[code].append(iso3166_updates[code][update])
-
-        #if current alpha-2 has no rows for selected month range, remove from temp object
-        if (temp_iso3166_updates[code] == []):
-            temp_iso3166_updates.pop(code, None)
-
-    #set main updates dict to temp one
-    iso3166_updates = temp_iso3166_updates
+    #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
+    if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(iso3166_updates) > 1:
+        iso3166_updates = sort_by_date(iso3166_updates, date_asc_desc=sort_by)
 
     return jsonify(iso3166_updates), 200
 
 '''
-/api/name and /api/name/year path/endpoints can accept multiple country names, separated 
-by a comma but several countries contain a comma already in their official name in the 
-iso3166 package. Separate multiple country names by a comma, cast to a sorted list, 
-unless any of the names are in the below list...
+/api/country_name and /api/country_name/year path/endpoints can accept multiple country names, 
+separated by a comma, but several countries contain a comma already in their official name in 
+the iso3166 package. Separate multiple country names by a comma, cast to a sorted list, unless 
+any of the names are in the below list...
 '''
 name_comma_exceptions = ["BOLIVIA, PLURINATIONAL STATE OF",
                 "BONAIRE, SINT EUSTATIUS AND SABA",
@@ -1203,35 +1029,284 @@ names_converted = {"UAE": "United Arab Emirates", "Brunei": "Brunei Darussalam",
                     "United States": "United States of America", "Vatican City": "Holy See", "Vatican": "Holy See", "Venezuela": 
                     "Venezuela, Bolivarian Republic of", "British Virgin Islands": "Virgin Islands, (British)", "US Virgin Islands": "Virgin Islands, (U.S.)"} 
 
-def convert_to_alpha2(alpha_code: str):
+def convert_to_alpha2(alpha_code: str) -> str:
     """ 
-    Auxillary function that converts an ISO 3166-1 country's 3 letter 
-    alpha-3 or numeric code into its 2 letter alpha-2 counterpart. 
+    Auxiliary function that converts an ISO 3166 country's 3 letter alpha-3 
+    or numeric code into its 2 letter alpha-2 counterpart. The function also
+    validates the input alpha-2 or converted alpha-2 code, returning None
+    if invalid alpha code input, the calling function should then return
+    an error message.
 
     Parameters 
     ==========
-    :alpha3_code: str
+    :alpha_code: str
         3 letter ISO 3166-1 alpha-3 or numeric country code.
     
     Returns
     =======
-    :iso3166.countries_by_alpha3[alpha3_code].alpha2: str
-        2 letter ISO 3166 alpha-2 country code. 
+    :alpha_code: str/None
+        converted ISO 3166-1 alpha-2 code. None returned if input cannot
+        be converted or is invalid.
+    
+    Raises
+    ======
+    TypeError:
+        Invalid data type input for alpha_code parameter
     """
+    #raise error if invalid type input
+    if not (isinstance(alpha_code, str)):
+        raise TypeError(f"Expected input alpha code to be a string, got {type(alpha_code)}.")
+
+    #uppercase alpha code, initial_alpha_code var maintains the original alpha code pre-uppercasing
+    alpha_code = alpha_code.upper()
+    
+    #use iso3166 package to find corresponding alpha-2 code from its numeric code, return error if numeric code not found
     if (alpha_code.isdigit()):
-        #return error if numeric code not found
         if not (alpha_code in list(iso3166.countries_by_numeric.keys())):
             return None
-        else:
-            #use iso3166 package to find corresponding alpha-2 code from its numeric code
-            return iso3166.countries_by_numeric[alpha_code].alpha2
+        return iso3166.countries_by_numeric[alpha_code].alpha2
 
-    #return error if 3 letter alpha-3 code not found
-    if not (alpha_code in list(iso3166.countries_by_alpha3.keys())):
-        return None
-    else:
-        #use iso3166 package to find corresponding alpha-2 code from its alpha-3 code
+    #return input alpha code if its valid, return error if alpha-2 code not found
+    if len(alpha_code) == 2:
+        if not (alpha_code in list(iso3166.countries_by_alpha2.keys())):
+            return None
+        return alpha_code
+
+    #use iso3166 package to find corresponding alpha-2 code from its alpha-3 code, return error if code not found
+    if len(alpha_code) == 3:
+        if not (alpha_code in list(iso3166.countries_by_alpha3.keys())):
+            return None
         return iso3166.countries_by_alpha3[alpha_code].alpha2
+
+def validate_year(year: str) -> tuple[list,bool,bool,bool,bool,bool,str]:
+    """
+    Validate and parse the year parameter into a list of years. Also return if
+    a year range, greater than/less than or not equal to year are input. Raise 
+    error if invalid year format.
+
+    Parameters
+    ========= 
+    :year: str
+        single string or comma separated list of 1 or more years to get the specific 
+        ISO 3166 updates from, per country. You can also pass in a year range 
+        (e.g 2010-2015), a year to get all updates less than or greater than that 
+        specified year (e.g >2007, <2021) or not equal to a year (e.g <>2001).
+
+    Returns
+    ======= 
+    :year: str
+        parsed and validated list of years.
+    :year_range: bool
+        if input year parameter contains a range of years.
+    :year_greater_than: bool
+        if input year parameter contains ">", thus getting all updates >= year.
+    :year_less_than: bool
+        if input year parameter contains "<", thus getting all updates < year.
+    :year_not_equal: bool 
+        if input year parameter contains "<>", thus excluding any rows with input 
+        year/years.
+    :year_error: bool
+        if True then there was an error processing the inputted year/years.
+    :year_error_message: str
+        if there was an error during processing and validating the year parameters,
+        this var returns the error message. 
+    """
+    #year bools
+    year_range = False
+    year_greater_than = False
+    year_less_than = False
+    year_not_equal = False
+    year_error = False
+    year_error_message = ""
+    _ = False #this is a placeholder bool for the error return messages to represent the vars we dont need to return
+
+    #parse alpha code parameter, split into list, remove any whitespace and sort
+    year = sorted(year.replace(' ', '').replace('%20', '').split(','))
+    
+    #convert > or < symbol from unicode to str ("%3E" and "%3C", respectively)
+    year = [urllib.parse.unquote(s) for s in year]
+
+    #validate each year's format using regex
+    for year_ in year:
+        #remove symbols like '<' or '>'
+        sanitized_year = re.sub(r"[<>]", "", year_)
+
+        #if it's a range, split and validate each part
+        years = sanitized_year.split('-')
+        for y in years:
+            #skip empty strings
+            if not y:
+                continue
+
+            #validate year format
+            if not re.match(r"^1[0-9]{3}$|^2[0-9]{3}$", y):
+                year_error, year_error_message = 1, f"Invalid year input, must be a valid year >= 1996, got {year_}."
+                return _, _, _, _, _, year_error, year_error_message
+
+    #a '-' separating 2 years implies a year range
+    #a ',' separating 2 years implies a list of years
+    #a '>' before year means greater than or equal to specified year
+    #a '<' before year means less than specified year
+    #a '<>' before the year means don't include year/list of years 
+    if ("<>" in year[0]):
+        year_not_equal = True
+        year = [x.replace("<>", "") for x in year]
+    elif ('-' in year[0]):
+        year_range = True
+        year = year[0].split('-')
+        #if year range years are wrong way around then swap them
+        if (year[0] > year[1]):
+            year[0], year[1] = year[1], year[0]
+        #raise error if more than 2 years in list
+        if (len(year) > 2):
+            year_error, year_error_message = 1, f"If using a range of years, there must only be 2 years separated by a '-': {year}."
+            return _, _, _, _, _, year_error, year_error_message
+    #parse array for using greater than symbol
+    elif ('>' in year[0]):
+        year = list(year[0].rpartition(">")[1:])
+        year_greater_than = True
+        year.remove('>')
+        #raise error if more than 2 years in list
+        if (len(year) > 2):
+            year_error, year_error_message = 1, f"If greater than year input, there must only be 1 year prepended by a '>': {year}."
+            return _, _, _, _, _, year_error, year_error_message
+    #parse array for using less than symbol
+    elif ('<' in year[0]):
+        year = list(year[0].rpartition("<")[1:])
+        year_less_than = True
+        year.remove('<')
+        #raise error if more than 2 years in list
+        if (len(year) > 2):
+            year_error, year_error_message = 1, f"If less than year input, there must only be 1 year prepended by a '<': {year}."
+            return _, _, _, _, _, year_error, year_error_message
+    #split years into comma separated list of multiple years if multiple years are input
+    elif (',' in year[0]):
+        year = year[0].split(',')
+
+    #raise error if more than one year related symbols are in year str
+    for year_ in year:
+        if any(symbol in year_ for symbol in ["-", "<", ">"]):
+            year_error, year_error_message = 1, f"Only one type of symbol should be input for year e.g '-', '<' or '>': {year}."
+            return _, _, _, _, _, year_error, year_error_message
+    
+    return year, year_range, year_greater_than, year_less_than, year_not_equal, year_error, year_error_message
+
+def sort_by_date(input_iso3166_updates: dict, date_asc_desc="datedesc") -> dict:
+    """
+    Sort the inputted updates object by publication date. The date_asc_desc 
+    parameter determines if the output is sorted latest or earliest first. 
+    The 2 accepted values are dateDesc and dateAsc, meaning to sort the date
+    descending or ascending, respectively. The "Country Code" attribute is 
+    added to each update object.
+
+    Parameters
+    ==========
+    :input_iso3166_updates: dict    
+        object of unsorted ISO 3166 updates. 
+    :date_asc_desc: str
+        parameter to determine whether to sort ascending or descending.
+
+    Returns
+    =======
+    :all_updates: dict
+        sorted object of ISO 3166 updates by publication date. 
+    """
+    #iterate over all updates, create updates object with Country Code added to identify the update's country, flatten into a list and append to array 
+    flattened_iso3166_updates = []
+    for country_code, updates in input_iso3166_updates.items():
+        for update in updates:
+            flattened_iso3166_updates.append({**update, "Country Code": country_code})
+
+    #sort flattened array by publication date, ascending or descending according to parameter, if invalid value input, descending by default
+    if (date_asc_desc == "dateasc"):
+        flattened_iso3166_updates.sort(key=lambda update: datetime.strptime(update["Date Issued"].split(" (")[0].strip(), "%Y-%m-%d"), reverse=False)
+    else:
+        flattened_iso3166_updates.sort(key=lambda update: datetime.strptime(update["Date Issued"].split(" (")[0].strip(), "%Y-%m-%d"), reverse=True)
+
+    #set flattened data to output object
+    all_updates = flattened_iso3166_updates
+
+    return all_updates
+    
+def convert_date_format(date: str) -> str|None:
+    """
+    Convert inputted date string into the YYYY-MM-DD format. There
+    are a series of accepted formats for the input date:
+    '%Y-%m-%d', '%d %B %Y', '%Y-%d-%m', '%d/%m/%Y', '%d-%m-%Y', '%y-%m-%d'.
+
+    If a matching format is not found then None will be returned.
+
+    Parameters
+    ==========
+    :date: str
+        input date string.
+
+    Returns
+    =======
+    :parsed_date: str|None:
+        converted date in the YYYY-MM-DD format or None.
+    """
+    #raise error if input date parameter isn't a string
+    if not isinstance(date, str):
+        return None
+
+    #strip whitespace and "." from input date
+    date = date.strip().rstrip(".") 
+
+    #list of accepted input date formats
+    date_formats = ['%Y-%m-%d', '%d %B %Y', '%Y-%d-%m', '%d/%m/%Y', '%d-%m-%Y', '%y-%m-%d']
+
+    #iterate over accepted date formats
+    for fmt in date_formats:
+        try:
+            #parse input date
+            parsed_date = datetime.strptime(date, fmt)
+
+            #handle potential ambiguity with the '%Y-%d-%m' format, in the case of the d & m values inputted incorrectly
+            if fmt == '%Y-%d-%m':
+                day = int(date.split('-')[1])  
+                #if day is greater than 12, swap day and month, try and parse date
+                if day > 12:  
+                    date = parsed_date.strftime('%Y-%m-%d')
+                    break  
+                else:
+                    #return None if date cannot be converted into desired format
+                    return None
+
+            #append validated and parsed date to the list
+            return parsed_date
+            
+        #skip to next date format iteration if the current one has failed
+        except ValueError:
+            continue  
+
+    #raise error if date format not valid
+    else:  
+        #return None if date cannot be converted into desired format
+        return None
+
+    #try to parse the date using the expected "%Y-%m-%d" format
+    try:
+        parsed_date = datetime.strptime(date, "%Y-%m-%d")
+        return date  
+    #if parsing failed, try the next format 
+    except ValueError:
+        pass  
+
+    #try to parse the date using the "%d/%m/%Y" format
+    try:
+        parsed_date = datetime.strptime(date, "%d/%m/%Y")
+        return parsed_date.strftime("%Y-%m-%d")  
+    #if parsing failed, skip to valueError below
+    except ValueError:
+        pass 
+
+    #return None if date format not valid
+    return None
+
+def create_error_message(message: str, path: str, status: int = 400) -> dict:
+    """ Helper function that returns error message when one occurs in Flask app. """
+    return {"message": message, "path": path, "status": status}
 
 @app.errorhandler(404)
 def not_found(e: int) -> tuple[dict, int]:

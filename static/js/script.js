@@ -64,7 +64,7 @@ window.onload = function(){
     var elements = [];
 
     //get dimensions of each menu div section on main content page
-    function calculElements () {
+    function calcElements () {
         var totalHeight = 0; //total height for div 
         elements = [];
         [].forEach.call(document.querySelectorAll('.content-section'), function (div) {
@@ -110,17 +110,17 @@ window.onload = function(){
     }
 
     //call create elements function
-    calculElements();
+    calcElements();
 
     //on page load, call create elements function 
     window.onload = () => { 
-        calculElements();
+        calcElements();
     };
 
     //create resize event listener, used when page is resized
     window.addEventListener("resize", debounce(function (e) {
         e.preventDefault();
-        calculElements();
+        calcElements();
     }));
 
     //create scroll event listener, used to scroll between sections on page
@@ -128,48 +128,74 @@ window.onload = function(){
         e.preventDefault();
         onScroll();
     });
-    
-    //iterate over all copy to clipboard buttons and create event listener that copies the API URL once clicked
-    // let copyTextBtn1 = document.querySelector("#copy-text-btn1");
-    let copyTextBtn2 = document.querySelector("#copy-text-btn2");
-    let copyTextBtn3 = document.querySelector("#copy-text-btn3");
-    let copyTextBtn4 = document.querySelector("#copy-text-btn4");
-    let copyTextBtn5 = document.querySelector("#copy-text-btn5");
-    let copyTextBtn6 = document.querySelector("#copy-text-btn6");
 
-    // copyTextBtn1.addEventListener("click", function () {
-    //     let apiURL = copyTextBtn1.getAttribute('data-api-url')
-    //     navigator.clipboard.writeText(apiURL);
-    //     console.log('API URL copied to clipboard: ' + apiURL);
-    // });
+    //query all buttons that start with ID "copy-text-btn"
+    const copyButtons = document.querySelectorAll('[id^="copy-text-btn"]');
 
-    copyTextBtn2.addEventListener("click", function () {
-        let apiURL = copyTextBtn2.getAttribute('data-api-url')
-        navigator.clipboard.writeText(apiURL);
-        console.log('API URL copied to clipboard: ' + apiURL);
+    //iterate over all copy to clipboard buttons and create event listener that copies the API URL once clicked & displays tooltip
+    copyButtons.forEach(button => {
+        button.addEventListener("click", () => {
+            const apiURL = button.getAttribute('data-api-url');
+            navigator.clipboard.writeText(apiURL).then(() => {
+                console.log('API URL copied to clipboard: ' + apiURL);
+
+                // Show tooltip
+                const tooltip = button.querySelector('.tooltip-text');
+                if (tooltip) {
+                    tooltip.style.visibility = 'visible';
+                    tooltip.style.opacity = '1';
+
+                    setTimeout(() => {
+                        tooltip.style.visibility = 'hidden';
+                        tooltip.style.opacity = '0';
+                    }, 1500); // hide after 1.5 seconds
+                }
+            });
+        });
     });
 
-    copyTextBtn3.addEventListener("click", function () {
-        let apiURL = copyTextBtn3.getAttribute('data-api-url')
-        navigator.clipboard.writeText(apiURL);
-        console.log('API URL copied to clipboard: ' + apiURL);
-    });
-
-    copyTextBtn4.addEventListener("click", function () {
-        let apiURL = copyTextBtn4.getAttribute('data-api-url')
-        navigator.clipboard.writeText(apiURL);
-        console.log('API URL copied to clipboard: ' + apiURL);
-    });
-    
-    copyTextBtn5.addEventListener("click", function () {
-        let apiURL = copyTextBtn5.getAttribute('data-api-url')
-        navigator.clipboard.writeText(apiURL);
-        console.log('API URL copied to clipboard: ' + apiURL);
-    });
-
-    copyTextBtn6.addEventListener("click", function () {
-        let apiURL = copyTextBtn6.getAttribute('data-api-url')
-        navigator.clipboard.writeText(apiURL);
-        console.log('API URL copied to clipboard: ' + apiURL);
-    });
 }
+//     //iterate over all copy to clipboard buttons and create event listener that copies the API URL once clicked
+//     // let copyTextBtn1 = document.querySelector("#copy-text-btn1");
+//     let copyTextBtn2 = document.querySelector("#copy-text-btn2");
+//     let copyTextBtn3 = document.querySelector("#copy-text-btn3");
+//     let copyTextBtn4 = document.querySelector("#copy-text-btn4");
+//     let copyTextBtn5 = document.querySelector("#copy-text-btn5");
+//     let copyTextBtn6 = document.querySelector("#copy-text-btn6");
+
+//     // copyTextBtn1.addEventListener("click", function () {
+//     //     let apiURL = copyTextBtn1.getAttribute('data-api-url')
+//     //     navigator.clipboard.writeText(apiURL);
+//     //     console.log('API URL copied to clipboard: ' + apiURL);
+//     // });
+
+//     copyTextBtn2.addEventListener("click", function () {
+//         let apiURL = copyTextBtn2.getAttribute('data-api-url')
+//         navigator.clipboard.writeText(apiURL);
+//         console.log('API URL copied to clipboard: ' + apiURL);
+//     });
+
+//     copyTextBtn3.addEventListener("click", function () {
+//         let apiURL = copyTextBtn3.getAttribute('data-api-url')
+//         navigator.clipboard.writeText(apiURL);
+//         console.log('API URL copied to clipboard: ' + apiURL);
+//     });
+
+//     copyTextBtn4.addEventListener("click", function () {
+//         let apiURL = copyTextBtn4.getAttribute('data-api-url')
+//         navigator.clipboard.writeText(apiURL);
+//         console.log('API URL copied to clipboard: ' + apiURL);
+//     });
+    
+//     copyTextBtn5.addEventListener("click", function () {
+//         let apiURL = copyTextBtn5.getAttribute('data-api-url')
+//         navigator.clipboard.writeText(apiURL);
+//         console.log('API URL copied to clipboard: ' + apiURL);
+//     });
+
+//     copyTextBtn6.addEventListener("click", function () {
+//         let apiURL = copyTextBtn6.getAttribute('data-api-url')
+//         navigator.clipboard.writeText(apiURL);
+//         console.log('API URL copied to clipboard: ' + apiURL);
+//     });
+// }

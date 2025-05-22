@@ -18,7 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;1,300&family=Source+Code+Pro:wght@300&display=swap" rel="stylesheet"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href= "{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" type="text/css" href= "{{ url_for('static', filename='css/hightlightjs-dark.css') }}">
+    <link rel="stylesheet" type="text/css" href= "{{ url_for('static', filename='css/highlightjs-dark.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
     <script src= "{{ url_for('static', filename='js/script.js') }}"></script>
 
@@ -29,6 +29,17 @@
 
 <!-- left hand menu section -->
 <body class="one-content-column-version">
+    <button class="theme-toggle" onclick="toggleTheme()">Switch Theme ⚡</button>
+    <script>
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+            localStorage.setItem('theme', document.body.classList.contains('dark-theme') ? 'dark' : 'light');
+        }
+        // Load user's preferred theme
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
     <div class="left-menu">
         <div class="content-logo">
             <div class="logo" style="display: flex;">
@@ -46,19 +57,21 @@
             <div class="content-infos">
                 <!-- version and last updated info -->
                 <div class="info" id="version"></div>
-                <div class="info" id="last-updated"><b>Last Updated:</b> April 2024</div>
+                <div class="info" id="last-updated"><b>Last Updated:</b> May 2025</div>
                 <div class="info" id="author"><b>Developer/Maintainer:</b> <a href="https://github.com/amckenna41/" target="_blank">AJ</a></div>
             </div>
             <!-- list of available sections in API documentation -->
             <ul id="section-list-menu">
                 <li class="scroll-to-link active" data-target="content-about"><a>About</a></li>
                 <li class="scroll-to-link" data-target="content-attributes"><a>Attributes</a></li>
+                <li class="scroll-to-link" data-target="content-query-string-parameters"><a>Query String Parameters</a></li>
                 <li class="scroll-to-link" data-target="content-endpoints"><a>Endpoints</a></li>
                 <li class="scroll-to-link" data-target="content-all" style="padding-left: 5%;"><a>All</a></li>
                 <li class="scroll-to-link" data-target="content-code" style="padding-left: 5%;"><a>Alpha Code</a></li>
-                <li class="scroll-to-link" data-target="content-name" style="padding-left: 5%;"><a>Name</a></li>
+                <li class="scroll-to-link" data-target="content-country-name" style="padding-left: 5%;"><a>Country Name</a></li>
                 <li class="scroll-to-link" data-target="content-year" style="padding-left: 5%;"><a>Year</a></li>
-                <li class="scroll-to-link" data-target="content-months" style="padding-left: 5%;"><a>Months</a></li>
+                <li class="scroll-to-link" data-target="content-date-range" style="padding-left: 5%;"><a>Date Range</a></li>
+                <li class="scroll-to-link" data-target="content-search" style="padding-left: 5%;"><a>Search</a></li>
                 <li class="scroll-to-link" data-target="content-contributing"><a>Contributing</a></li>
                 <li class="scroll-to-link" data-target="content-credits"><a>Credits</a></li>
             </ul>
@@ -73,13 +86,13 @@
             <div class="overflow-hidden content-section" id="content-about" style="font-size: 1.333em;">
                 <h1>About</h1>
                 <p> 
-                    The ISO 3166 Updates API is a custom-built, open-source and free to use API for the <a href="https://github.com/amckenna41/iso3166-updates" target="_blank">iso3166-updates</a> repo 
+                    The ISO 3166 Updates API is a custom-built, open-source and free to use RESTful API for the <a href="https://github.com/amckenna41/iso3166-updates" target="_blank">iso3166-updates</a> repo 
                     that returns the latest and historical updates/changes to the ISO 3166-1 and ISO 3166-2 country codes and naming conventions, as per the ISO 3166 newsletter (https://www.iso.org/iso-3166-country-codes.html) 
                     and Online Browsing Platform (OBP) (https://www.iso.org/obp/ui).<br><br>A demo of the API and Python software is available 
                     <a href="https://colab.research.google.com/drive/1oGF3j3_9b_g2qAmBtv3n-xO2GzTYRJjf?usp=sharing" target="_blank">here</a>.  <br>Source code available 
-                    <a href="https://github.com/amckenna41/iso3166-updates-api" target="_blank">here</a>. <br>
-                    <!-- <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api</code> -->
-                    <!-- <button style="cursor: pointer;" id="copy-text-btn1" data-api-url="https://iso3166-updates.com/api" target="_blank"><i class="fa fa-clone"></i></button> -->
+                    <a href="https://github.com/amckenna41/iso3166-updates-api" target="_blank">here</a>. <br> A Medium article is available <a href="https://medium.com/@ajmckenna69/iso3166-updates-d06b817af3a7" target="_blank">here</a>. <br>
+                    <!-- <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api</code> -->
+                    <!-- <button style="cursor: pointer;" id="copy-text-btn1" data-api-url="https://iso3166-updates.vercel.app/api" target="_blank"><i class="fa fa-clone"></i></button> -->
                 </p>
             </div>
 
@@ -89,21 +102,46 @@
                 <p>
                     There are four main attributes returned from the API:
                     <ul style="color: #D6F0F0;">
-                        <li>Edition/Newsletter: name and or edition of newsletter that the ISO 3166 change/update was communicated in (pre 2013), or the link to the country's ISO Online Browsing Platform page.</li>
-                        <li>Date Issued: date that the change was communicated.</li>
-                        <li>Code/Subdivision change: overall summary of change/update made.</li>
-                        <li>Description of change: more in-depth info about the change/update that was made.</li>
+                        <li>Change: overall summary of change/update made.</li>
+                        <li>Description of Change: more in-depth info about the change/update that was made.</li>
+                        <li>Date Issued: date that the change was published/communicated.</li>
+                        <li>Source: name and or edition of newsletter that the ISO 3166 change/update was communicated in (pre 2013), or the link to the country's ISO Online Browsing Platform page.</li>
                     </ul>
                 </p>
             </div>
 
-            <!-- Endpoints section -->
+            <!-- Query string parameters section -->
+            <div class="overflow-hidden content-section" id="content-query-string-parameters">
+                <h1>Query String Parameters</h1>
+                <p>
+                    There are three main query string parameters that can be passed through several of the endpoints of the API:
+                    <ul style="color: #D6F0F0;">
+                        <li><b>sortBy</b>: sort the output results by publication date (Date Issued), either descending or ascending.
+                            By default, the updates data will be returned alphabetically, according to ISO 3166 2 letter country code, 
+                            but you can order by date. The parameter accepts two values: dateDesc and dateAsc - sorting the output by 
+                            date descending or ascending, respectively. If an invalid value input then the output is sorted by country 
+                            code. This can be appended to all of the endpoints, e.g /api/all?sortBy=dateDesc, 
+                            /api/year/2010-2015?sortBy=dateAsc, /api/date_range/2019-01-01?sortBy="" (sorted by country code).</li>
+                        <li><b>likeness</b>: this is a value between 1 and 100 that increases or reduces the % of similarity/likeness that 
+                            the inputted search terms have to match to the updates data in the Change and Desc of Change attributes. 
+                            This can only be used in the /api/search endpoint. Having a higher value should return more exact and 
+                            less matches and having a lower value will return less exact but more matches, 
+                            e.g /api/search/Paris?likeness=50, /api/search/canton?likeness=90 (default=100).</li>
+                        <li><b>excludeMatchScore</b>: exclude the matchScore` attribute from the search results when using the /api/search 
+                            endpoint. The match score is the % of a match each returned updates data object is to the search terms, 
+                            with 100% being an exact match. By default the match score is returned for each object, 
+                            e.g /api/search/addition?excludeMatchScore=1, /api/search/New York?excludeMatchScore=1 (default=0).</li>
+                    </ul>
+                </p>
+            </div>
+
+            <!-- Endpoints section 
             <div class="overflow-hidden content-section" id="content-endpoints">
                 <h2>Endpoints</h2>
                 <p>
-                    The ISO 3166 Updates API currently has 5 main endpoints, /all, /alpha, /name, /year and /months:
+                    The ISO 3166 Updates API currently has 5 main endpoints, /all, /alpha, /year, /date_range and /search:
                 </p>
-                    <!-- html table outlining available endpoints -->
+                     html table outlining available endpoints
                     <table>
                         <thead>
                         <tr>
@@ -113,34 +151,34 @@
                         </thead>
                         <tbody>
                         <tr>
-                            <td>https://iso3166-updates.com/api/all</td>
+                            <td>https://iso3166-updates.vercel.app/api/all</td>
                             <td>
                             Return all updates/changes to a country/territory and its subdivision data and naming conventions for all countries listed in the ISO 3166.
                             </td>
                         </tr>
                         <tr>
-                            <td>https://iso3166-updates.com/api/alpha/{input_alpha}</td>
+                            <td>https://iso3166-updates.vercel.app/api/alpha/{input_alpha}</td>
                             <td>
                                 Return all updates/changes to a country/territory and its subdivision data and naming conventions for input ISO 3166-1 alpha-2,
                                 alpha-3 or numeric country codes. A comma separated list of country codes can also be input. 
                             </td>
                         </tr>
-                        <tr>
-                            <td>https://iso3166-updates.com/api/name/{input_name}</td>
+                   <tr>
+                            <td>https://iso3166-updates.vercel.app/api/name/{input_name}</td>
                             <td>
                                 Return all updates/changes to a country/territory and its subdivision data and naming conventions for input country name, as it 
                                 is commonly known in English. A comma separated list of country names can also be input.
                             </td>
                         </tr>
                         <tr>
-                            <td>https://iso3166-updates.com/api/year/{input_year}</td>
+                            <td>https://iso3166-updates.vercel.app/api/year/{input_year}</td>
                             <td>
                                 Return all updates/changes to all countries/territories and their subdivision data and naming conventions for a particular year, list 
-                                of years, year range or all updates less than or greater than an input year.
+                                of years, year range, all updates less than or greater than an input year or updates not equal to a specified year.
                             </td>
                         </tr>
                         <tr>
-                            <td>https://iso3166-updates.com/api/alpha/{input_alpha}/year/{input_year}, https://iso3166-updates.com/api/year/{input_year}/alpha/{input_alpha}</td>
+                            <td>https://iso3166-updates.vercel.app/api/alpha/{input_alpha}/year/{input_year}, https://iso3166-updates.vercel.app/api/year/{input_year}/alpha/{input_alpha}</td>
                             <td>
                                 Return all updates/changes to a country/territory and its subdivision data and naming conventions for input ISO 3166-1 
                                 alpha-2, alpha-3 or numeric country code, for an input year, list of years, year range or all updates less than or greater than an 
@@ -148,112 +186,192 @@
                             </td>
                         </tr>
                         <tr>
-                            <td>https://iso3166-updates.com/api/name/{input_name}/year/{input_year}, https://iso3166-updates.com/api/year/{input_year}/name/{input_name}</td>
+                            <td>https://iso3166-updates.vercel.app/api/name/{input_name}/year/{input_year}, https://iso3166-updates.vercel.app/api/year/{input_year}/name/{input_name}</td>
                             <td>
                                 Return all updates/changes to a country/territory and its subdivision data and naming conventions for input country name, as it 
                                 is commonly known in English, for an input year, list of years, year range or all updates less than or greater than an input year. 
                                 A comma separated list of country names can also be input.
                             </td>
-                        </tr>
+                        </tr> 
                         <tr>
-                            <td>https://iso3166-updates.com/api/months/{input_months}</td>
+                            <td>https://iso3166-updates.vercel.app/api/date_range/{input_date_range}</td>
                             <td>
-                                Return all updates/changes to all countries/territories and their subdivision data and naming conventions from the previous number of months 
-                                from the present day, inclusive, e.g. /api/months/12 will return all updates for all countries from the past 12 months. The endpoint can also
-                                accept a month range which will get all updates/changes that were published within the specified range, e.g. /api/months/12-36.
+                                Return all updates/changes to all countries/territories and their subdivision data and naming conventions within a specified date range, 
+                                e.g. /api/date_range/2020-01-01,2023-01-01 will return all updates for all countries from 1st Jan 2020 to 1st Jan 2023, inclusive. The 
+                                endpoint can also accept a single date, which will act as the start date to get updates from, with the end date being the current date,
+                                e.g. /api/date_range/2024-05-12 - all updates from 12th May 2024 to the present day.
                             </td>
                         </tr>
-                        <tr>
-                            <td>https://iso3166-updates.com/api/months/{input_months}/alpha/{input_alpha}, https://iso3166-updates.com/api/alpha/{input_alpha}/months/{input_months}</td>
+
+                        
+                         <tr>
+                            <td>https://iso3166-updates.vercel.app/api/date_range/{input_date_range}/alpha/{input_alpha}, https://iso3166-updates.vercel.app/api/date_range/{input_date_range}/alpha/{input_alpha}</td>
+                            <td>
+                            </td>
+                        </tr> -->
+                        <!-- <tr>
+                            <td>https://iso3166-updates.vercel.app/api/date_range/{input_date_range}/alpha/{input_alpha}, https://iso3166-updates.vercel.app/api/alpha/{input_alpha}/date_range/{input_date_range}</td>
                             <td>
                                 Return all updates/changes to a country/territory and its subdivision data and naming conventions for input ISO 3166-1 alpha-2,
-                                alpha-3 or numeric country codes from the previous number of months from the present day, inclusive, e.g. /api/months/36/alpha/EG will 
-                                return all updates for Egypt from the past 36 months.
+                                alpha-3 or numeric country codes from a specified date range, e.g. /api/date_range/2009-09-18,2015-11-05/alpha/EG will 
+                                return all updates for Egypt from 18th Sep 2009 to 5th Nov 2015, inclusive.
+                            </td>
+                        </tr> 
+                        <tr>
+                            <td>https://iso3166-updates.vercel.app/api/search/{input_search_term}</td>
+                            <td>
+                                Return all updates/changes to all countries/territories and their subdivision data and naming conventions that have the inputted
+                                search terms in them. By default the API will look for an exact match, but the % of likeness to the input search terms found in 
+                                the updates data can be amended via the 'likeness' query string parameter, lowering this value will expand the search space for 
+                                the terms; a value between 0 and 1 is accepted. For example, /api/search/canton will return all updates objects that have 'canton'
+                                in them.  
                             </td>
                         </tr>
+
+                        <tr>
+                            <td>https://iso3166-updates.vercel.app/api/search/{input_search_term}/alpha/{input_alpha}</td>
+                            <td>
+                            </td>
+                        </tr> 
+                        
                     </tbody>
                     </table>
                 </div>
-
+                
+            -->
             <!-- All endpoint section -->
+            <div class="overflow-hidden content-section" id="content-endpoints">
+            <h1>Endpoints</h1>
+            <p>
+                The ISO 3166 Updates API currently has 6 main endpoints, /all, /alpha, /year, /country_name, /date_range and /search. A description of each along with a few examples are below.
+            </p>
+            </div>
+
             <div class="overflow-hidden content-section" id="content-all">
-                <h1>All</h1>
+                <h2>All</h2>
                 <p>
-                    The /api/all endpoint returns all updates/changes data for all countries/territories in the ISO 3166. The list of countries supported is according 
+                    The /api/all endpoint returns all updates/changes data for all countries/territories and their subdivision data and naming conventions. The list of countries supported is according 
                     to the <a href="https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes" target="_blank">ISO 3166-1 standard</a>. <br><br>
-                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/all</code>
-                    <button style="cursor: pointer;" id="copy-text-btn2" data-api-url="https://iso3166-updates.com/api/all"><i class="fa fa-clone"></i></button>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/all</code>
+                    <!-- <button style="cursor: pointer;" id="copy-text-btn2" data-api-url="https://iso3166-updates.vercel.app/api/all"><i class="fa fa-clone"></i></button> -->
+                    <button style="cursor: pointer; position: relative;" id="copy-text-btn2" data-api-url="https://iso3166-updates.vercel.app/api/all" onclick="copyToClipboard(this)">
+                    <i class="fa fa-clone"></i>
+                    <span class="tooltip-text">Copied!</span>
+                    </button>
+
                 </p>
             </div>
 
             <!-- Alpha code endpoint section -->
             <div class="overflow-hidden content-section" id="content-code">
-                <h1>Alpha</h1>
+                <h2>Alpha</h2>
                 <p>
                     The /api/alpha endpoint returns all updates/changes to a country/territory and its subdivision data and naming conventions for an input ISO 3166-1 alpha-2, 
                     alpha-3 or numeric country code. A comma separated list of country codes can also be input. This endpoint can also be used in conjunction with the /api/year 
-                    and /api/months endpoints. <br><br>
-                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha/{input_alpha}</code>
-                    <button style="cursor: pointer;" id="copy-text-btn3" data-api-url="https://iso3166-updates.com/api/alpha/{input_alpha}"><i class="fa fa-clone"></i></button> <br><br>
-                    <a href="https://iso3166-updates.com/api/alpha/AD" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha/AD</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/alpha/DE" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha/DE</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/alpha/MEX" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha/MEX</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/alpha/PRY" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha/PRY</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/alpha/DE,674" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha/DE,674</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/alpha/MEX,768" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha/MEX,768</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/alpha/PR/year/2018" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha/PR/year/2018</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/alpha/TO,TW,TV/months/24" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/alpha/TO,TW,TV/months/24</code></a> 
+                    and /api/date_range endpoints. <br><br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/alpha/{input_alpha}</code>
+                    <button style="cursor: pointer; position: relative;" id="copy-text-btn3" data-api-url="https://iso3166-updates.vercel.app/api/alpha/{input_alpha}" onclick="copyToClipboard(this)"> 
+                    <i class="fa fa-clone"></i>
+                        <span class="tooltip-text">Copied!</span>
+                    </button> <br><br>
+                    <!-- <button style="cursor: pointer;" id="copy-text-btn3" data-api-url="https://iso3166-updates.vercel.app/api/alpha/{input_alpha}"><i class="fa fa-clone"></i></button> <br><br> -->
+                    <a href="https://iso3166-updates.vercel.app/api/alpha/AD" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/alpha/AD</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/alpha/DE" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/alpha/DE</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/alpha/MEX" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/alpha/MEX</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/alpha/PRY" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/alpha/PRY</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/alpha/DE,674" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/alpha/DE,674</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/alpha/MEX,768" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/alpha/MEX,768</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/alpha/PR/year/2018" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/alpha/PR/year/2018</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/alpha/TO,TW,TV/date_range/2003-01-01,2009-01-01" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/alpha/TO,TW,TV/date_range/2003-01-01,2009-01-01</code></a> 
                 </p>
             </div>
 
             <!-- Name endpoint section -->
-            <div class="overflow-hidden content-section" id="content-name">
-                <h1>Name</h1>
+             <div class="overflow-hidden content-section" id="content-country-name">
+                <h2>Country Name</h2>
                 <p>
-                    The /api/name endpoint returns all updates/changes to a country/territory and its subdivision data and naming conventions for an input country name, as it 
+                    The /api/country_name endpoint returns all updates/changes to a country/territory and its subdivision data and naming conventions for an input country name, as it 
                     is commonly known in English. A comma separated list of country names can also be input. This endpoint can also be used in conjunction with the 
-                    /api/year and /api/months endpoints.<br> <br>
-                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/name/{input_name}</code> 
-                    <button style="cursor: pointer;" id="copy-text-btn4" data-api-url="https://iso3166-updates.com/api/name/{input_name}"><i class="fa fa-clone"></i></button> <br><br>
-                    <a href="https://iso3166-updates.com/api/name/Ireland" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/name/Ireland</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/name/Jamaica" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/name/Jamaica</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/name/Panama,Rwanda,Zambia" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/name/Panama,Rwanda,Zambia</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/name/Tajikistan/year/2015-2022" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/name/Tajikistan/year/2015-2022</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/name/Senegal,Suriname,Sri lanka/months/60" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/name/Senegal,Suriname,Sri lanka/months/60</code></a>
+                    /api/year endpoint.<br> <br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/country_name/{input_country_name}</code> 
+                    <!-- <button style="cursor: pointer;" id="copy-text-btn4" data-api-url="https://iso3166-updates.vercel.app/api/country_name/{input_country_name}"><i class="fa fa-clone"></i></button> <br><br> -->
+                    <button style="cursor: pointer; position: relative;" id="copy-text-btn4" data-api-url="https://iso3166-updates.vercel.app/api/country_name/{input_country_name}" onclick="copyToClipboard(this)"> 
+                    <i class="fa fa-clone"></i>
+                        <span class="tooltip-text">Copied!</span>
+                    </button> <br><br>                    
+                    <a href="https://iso3166-updates.vercel.app/api/country_name/Ireland" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/country_name/Ireland</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/country_name/Jamaica" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/country_name/Jamaica</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/country_name/Panama,Rwanda,Zambia" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/country_name/Panama,Rwanda,Zambia</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/country_name/Tajikistan/year/2015-2022" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/country_name/Tajikistan/year/2015-2022</code></a> <br>
                 </p>
-            </div>
+            </div> 
 
             <!-- Year endpoint section -->
             <div class="overflow-hidden content-section" id="content-year">
-                <h1>Year</h1>
+                <h2>Year</h2>
                 <p>
                     The /api/year endpoint returns all updates/changes to all countries/territories and their subdivision data and naming conventions for a particular year, list 
-                    of years, year range or all updates less than or greater than an input year. This endpoint can also be used in conjunction with the /api/alpha and 
-                    /api/name endpoints.<br> <br>
-                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/{input_year}</code> 
-                    <button style="cursor: pointer;" id="copy-text-btn5" data-api-url="https://iso3166-updates.com/api/year/{input_year}"><i class="fa fa-clone"></i></button> <br><br>
-                    <a href="https://iso3166-updates.com/api/year/2014" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/2014</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/year/2007,2011,2022" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/2007,2011,2022</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/year/2000-2005" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/2000-2005</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/year/&lt;2021" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/&lt;2021</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/year/&gt;2005/alpha/AF,LV,UG" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/year/&gt;2005/alpha/AF,LV,UG</code></a>
+                    of years, year range, all updates less than or greater than an input year or updates excluding an input year. This endpoint can also be used in conjunction 
+                    with the /api/alpha endpoint.<br> <br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/year/{input_year}</code> 
+                    <!-- <button style="cursor: pointer;" id="copy-text-btn5" data-api-url="https://iso3166-updates.vercel.app/api/year/{input_year}"><i class="fa fa-clone"></i></button> <br><br> -->
+                    <button style="cursor: pointer; position: relative;" id="copy-text-btn5" data-api-url="https://iso3166-updates.vercel.app/api/year/{input_year}" onclick="copyToClipboard(this)"> 
+                    <i class="fa fa-clone"></i>
+                        <span class="tooltip-text">Copied!</span>
+                    </button> <br><br> 
+                    <a href="https://iso3166-updates.vercel.app/api/year/2014" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/year/2014</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/year/2007,2011,2022" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/year/2007,2011,2022</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/year/2000-2005" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/year/2000-2005</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/year/&lt;2021" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/year/&lt;2021</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/year/<>2003" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/year/<>2003</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/year/&gt;2005/alpha/AF,LV,UG" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/year/&gt;2005/alpha/AF,LV,UG</code></a>
                 </p>
             </div>
 
-            <!-- Months endpoint section -->
-            <div class="overflow-hidden content-section" id="content-months">
-                <h1>Months</h1>
+            <!-- Date Range endpoint section -->
+            <div class="overflow-hidden content-section" id="content-date-range">
+                <h2>Date Range</h2>
                 <p>
-                    The /api/months endpoint returns all updates/changes to all countries/territories and their subdivision data and naming conventions from an input number of months 
-                    from the present day, inclusive, e.g. /api/months/12 will return all updates for all countries from the past 12 months. The endpoint can also accept a month range
-                    to get updates/changes from. The endpoint can also be used in conjunction with the /api/alpha and /api/name endpoints. <br> <br>
-                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/{input_months}</code> 
-                    <button style="cursor: pointer;" id="copy-text-btn6" data-api-url="https://iso3166-updates.com/api/months/{input_months}"><i class="fa fa-clone"></i></button> <br><br>
-                    <a href="https://iso3166-updates.com/api/months/12" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/12</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/months/24" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/24</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/months/6-24" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/6-24</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/months/6/alpha/FR" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/6/alpha/FR</code></a> <br>
-                    <a href="https://iso3166-updates.com/api/months/60/alpha/DZA,MDA,POL" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.com/api/months/60/alpha/DZA,MDA,POL</code></a> 
+                    The /api/date_range endpoint returns all updates/changes to all countries/territories and their subdivision data and naming conventions from a specified date range, inclusive;
+                    e.g. /api/date_range/2007-08-08,2007-12-31 will return all updates for all countries from the 8th Aug 2007 until 31st Dec 2007, inclusive. The endpoint can also 
+                    accept single date value which will act as the starting point to get updates from, with the present day being the end date. The endpoint can also be used in conjunction 
+                    with the /api/alpha endpoint. <br> <br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/date_range/{input_date_range}</code> 
+                    <!-- <button style="cursor: pointer;" id="copy-text-btn6" data-api-url="https://iso3166-updates.vercel.app/api/date_range/{input_date_range}"><i class="fa fa-clone"></i></button> <br><br> -->
+                    <button style="cursor: pointer; position: relative;" id="copy-text-btn6" data-api-url="https://iso3166-updates.vercel.app/api/date_range/{input_date_range}" onclick="copyToClipboard(this)"> 
+                    <i class="fa fa-clone"></i>
+                        <span class="tooltip-text">Copied!</span>
+                    </button> <br><br> 
+                    <a href="https://iso3166-updates.vercel.app/api/date_range/2004-06-12,2010-09-20?sortBy=dateDesc" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/date_range/2004-06-12,2010-09-20?sortBy=dateDesc</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/date_range/2012-02-17,2012-12-31" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/date_range/2012-02-17,2012-12-31</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/date_range/2019-12-18" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/date_range/2019-12-18</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/date_range/2002-08-23,2010-11-10/alpha/FR" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/date_range/2002-08-23,2010-11-10/alpha/FR</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/date_range/2000-01-01/alpha/DZA,MDA,POL" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/date_range/2000-01-01/alpha/DZA,MDA,POL</code></a> 
+                </p>
+            </div>
+
+            <!-- Search endpoint section -->
+            <div class="overflow-hidden content-section" id="content-search">
+                <h2>Search</h2>
+                <p>
+                    The /api/search endpoint returns all updates/changes to a country/territory and its subdivision data and naming conventions that contain the sought search 
+                    terms in their Change/Desc of Change attributes. A comma separated list of search terms can also be input. If a date is explicitly input then the Date Issued
+                    attribute will also be searched. By default the API will look for an exact match, but the % of likeness to the input search terms found in the updates data 
+                    can be amended via the 'likeness' query string parameter, lowering this value will expand the search space for the terms; a value between 0 and 100 is accepted.
+                    By default, the Match Score attribute is returned with the objects, which is the % the outputs match to the search terms, this attribute can be excluded in the
+                    output by setting 'excludeMatchScore' to True/1. <br><br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/search/{input_search_term}</code>
+                    <!-- <button style="cursor: pointer;" id="copy-text-btn7" data-api-url="https://iso3166-updates.vercel.app/api/search/{input_search_term}"><i class="fa fa-clone"></i></button> <br><br> -->
+                    <button style="cursor: pointer; position: relative;" id="copy-text-btn7" data-api-url="https://iso3166-updates.vercel.app/api/search/{input_search_term}" onclick="copyToClipboard(this)"> 
+                    <i class="fa fa-clone"></i>
+                        <span class="tooltip-text">Copied!</span>
+                    </button> <br><br> 
+                    <a href="https://iso3166-updates.vercel.app/api/search/canton" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/search/canton</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/search/Berlin" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/search/Berlin</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/search/addition,deletion?likeness=80" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/search/addition,deletion?likeness=80</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/search/remark part 2?sortBy=dateDesc" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/search/remark part 2?sortBy=dateDesc</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/search/2015-11-27?excludeMatchScore=1" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/search/2017-11-27?excludeMatchScore=1</code></a> <br>
+
                 </p>
             </div>
 
@@ -270,7 +388,7 @@
             <div class="overflow-hidden content-section" id="content-credits">
                 <h1>Credits</h1>
                 <p>
-                    The Python software and accompanying API were solely developed by <a href="https://github.com/amckenna41/" target="_blank">me</a> : ). 
+                    The Python software and accompanying API are solely developed and maintained by <a href="https://github.com/amckenna41/" target="_blank">me</a> : ). 
                 </p>
             </div>
 

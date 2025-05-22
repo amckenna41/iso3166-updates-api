@@ -2,51 +2,76 @@
 
 ![Vercel](https://therealsujitk-vercel-badge.vercel.app/?app=iso3166-2-api)
 
-The main API endpoint is:
+The main API endpoint and homepage is:
 
-> https://iso3166-updates.com/api
+> https://iso3166-updates.vercel.app/
 
 The other endpoints available in the API are:
-* https://iso3166-updates.com/api/all
-* https://iso3166-updates.com/api/alpha/<input_alpha>
-* https://iso3166-updates.com/api/name/<input_name>
-* https://iso3166-updates.com/api/year/<input_year>
-* https://iso3166-updates.com/api/alpha/<input_alpha>/year/<input_year>
-* https://iso3166-updates.com/api/name/<input_name>/year/<input_year>
-* https://iso3166-updates.com/api/months/<input_month>
-* https://iso3166-updates.com/api/months/<input_month>/alpha/<input_alpha>
+* https://iso3166-updates.vercel.app/api/all
+* https://iso3166-updates.vercel.app/api/alpha/<input_alpha>
+* https://iso3166-updates.vercel.app/api/year/<input_year>
+* https://iso3166-updates.vercel.app/api/search/<input_search>
+* https://iso3166-updates.vercel.app/api/date_range/<input_date_range>
+* https://iso3166-updates.vercel.app/api/alpha/<input_alpha>/year/<input_year>
+* https://iso3166-updates.vercel.app/api/date_range/<input_date_range>/alpha/<input_alpha>
+* https://iso3166-updates.vercel.app/api/date_range/<input_date_range>/year/<input_year>
 
-The paths/endpoints available in the API are - `/api/all`, `/api/alpha`, `/api/name`, `/api/year` and `/api/months`. 
+The main paths/endpoints available in the API are - `/api/all`, `/api/alpha`, `/api/year`, `/api/country_name`, `/api/search` and `/api/date_range`.
 
-* `/api/all`: get all of the ISO 3166 updates/changes data for all countries.
+* `/api/all`: get all of the ISO 3166 updates/changes data for all countries and publication years.
 
-* `/api/alpha`: get all the ISO 3166 updates/changes data for one or more countries according to their ISO 3166-1 alpha-2, alpha-3 or numeric country codes. A single alpha code or a list of them can be passed to the API e.g. `/api/alpha/AL`, `/api/alpha/BW`, `/api/alpha/FR,DE,HUN,IDN,504`. If an invalid alpha code is input then an error will be returned. This endpoint can be used in conjunction with the **year** and **month** endpoints to get the country updates for a specific country and year, and the country updates for a specific country over the past number of months, respectively. This will be in the format: `/api/alpha/<input_alpha>/year/<input_year>` and `/api/alpha/<input_alpha>/months/<input_month>`, respectively.
+* `/api/alpha`: get all the ISO 3166 updates/changes data for one or more countries according to their ISO 3166-1 alpha-2, alpha-3 or numeric country codes. A single alpha code or a list of them can be passed to the API e.g. `/api/alpha/AL`, `/api/alpha/BWA`, `/api/alpha/FR,DE,HUN,IDN,504`. If an invalid alpha code is input then an error will be returned. This endpoint can be used in conjunction with the **year** and **date_range** endpoints to get the country updates for a specific country and year, and the country updates over a specific date range, respectively. This will be in the format: `/api/alpha/<input_alpha>/year/<input_year>` and `/api/alpha/<input_alpha>/date_range/<input_date_range>`, respectively.
 
-* `/api/name`: get all the ISO 3166 updates/changes data for one or more countries according to their country name, as listed in the ISO 3166-1. A single country name or list of them can be passed into the API e.g. `/api/name/Brazil`, `/api/name/Colombia`, `/api/name/Benin,France,Moldova`. A closeness function is used to get the most approximate available country from the one input, e.g. Sweden will be used if the input is `/api/name/Swede`. If no matching country is found from the closeness function or an invalid name is input then an error will be returned. This endpoint can be used in conjunction with the **year** and **months** endpoint to get the country updates for a specific country name and year and the country updates for a specific country over the past number of months, respectively. This will be in the format: `/api/name/<input_name>/year/<input_year>` and `/api/name/<input_name>/months/<input_month>`, respectively. 
+* `/api/year`: get all the ISO 3166 updates/changes data for one or more countries according to a specific year, year range, a cut-off year to get updates less than/more than a year or all updates except for a year, e.g. `/api/year/2017`, `/api/year/2010-2015`, `/api/year/<2009`, `/api/year/>2002` and `/api/year/<>2020`. If an invalid year is input then an error will be returned. This endpoint can be used in conjunction with the **alpha** endpoint to get the country updates for a specific country and year. This will be in in the format `/api/alpha/<input_alpha>/year/<input_year>`.
 
-* `/api/year`: get all the ISO 3166 updates/changes data for one or more countries according to a specific year, year range, or a cut-off year to get updates less than/more than a year, e.g. `/api/year/2017`, `/api/year/2010-2015`, `/api/year/<2009`, `/api/year/>2002`. If an invalid year is input then an error will be returned. This endpoint can be used in conjunction with the **alpha** and **name** endpoints to get the country updates for a specific country and year. This will be in in the format `/api/alpha/<input_alpha>/year/<input_year>` and `/api/name/<input_name>/year/<input_year>`, respectively. 
+* `/api/country_name`: get all the ISO 3166 updates/changes data for one or more countries according to their name, as it is commonly known in English, e.g. `/api/country_name/Tajikistan`, `/api/country_name/Benin,Togo`, `/api/country_name/Russia,Sudan,Swaziland`. If an invalid country name is input then an error will be returned. This endpoint can be used in conjunction with the **year** endpoint to get the country updates for a specific country and year. This will be in in the format `/api/country_name/<input_country_name>/year/<input_year>`.
 
-* `/api/months`: get all the ISO 3166 updates/changes data for one or more countries from an input number of months from the present day, e.g. `/api/months/12`, `/api/months/24`, `/api/months/50`. A month range can also be input to get the updates published within a specified range of months, with the start and end month separated by a '-' e.g. `/api/months/12-24`, `/api/months/36-50`. If an invalid month value is input then an error will be returned. This endpoint can be used in conjunction with the **alpha** and **name** endpoints to get the country updates for a specific country over the past number of months using their ISO 3166-1 alpha code or country name, respectively. This will be in the format: `/api/months/<input_month>/alpha/<input_alpha>` and `/api/months/<input_month>/name/<input_name>`, respectively.
+* `/api/search`: get all the ISO 3166 updates/changes data for one or more countries that have the inputted search terms. A single keyword/term or list of them can be passed to the API e.g. `/api/search/Brazil`, `/api/search/Addition,deletion`, `/api/search/2017-11-23`. A closeness function is used to search through the updates objects, finding any applicable matches to the keywords input via the Change and Description of Change attributes. If a date is explicitly input then the Date Issued attributes will also be searched. If no matching objects found then an error will be returned. 
+
+* `/api/date_range`: get all the ISO 3166 updates/changes data for one or more countries that were published within a specified input date range e.g. `/api/date_range/2011-12-09,2014-01-10`, `/api/date_range/2013-08-02,2015-07-10`, `/api/date_range/2018-05-12`. If a single date is input it will act as the starting date within the date range, with the end of the range being the current day. If an invalid date type/format value is input then an error will be returned. This endpoint can be used in conjunction with the **alpha** endpoint to get the country updates for a specific country and date range. This will be in in the format `/api/alpha/<input_alpha>/date_range/<input_date_range>`.
 
 * `/api`: main homepage and API documentation.
 
-The API was hosted and built using GCP, with a Cloud Function being used in the backend which is fronted by an api gateway and load balancer. The function calls a GCP Storage bucket to access the back-end JSON where all ISO 3166 updates are stored. <i>Although, due to the cost of infrastructure, the hosting was switched to Vercel (https://vercel.com/).</i>
+Attributes
+----------
+There are four main data attributes for each country updates object:
 
-The full list of attributes available for each country are:
+* <b>Change</b>: overall summary of change/update made.
+* <b>Description of Change</b>: more in-depth info about the change/update that was made, including any remarks listed on the official ISO page.
+* <b>Date Issue</b>: date that the change was communicated.
+* <b>Source</b>: name and or edition of newsletter that the ISO 3166 change/update was communicated in (pre 2013), or the link to the country's ISO Online Browsing Platform page.
 
-* Edition/Newsletter: name and or edition of newsletter that the ISO 3166 change/update was communicated in (pre 2013), or the link to the country's ISO Online Browsing Platform page.
-* Date Issued: date that the change was communicated.
-* Code/Subdivision change: overall summary of change/update made.
-* Description of change: more in-depth info about the change/update that was made, including any remarks listed on the official ISO page.
+Query String Parameters
+-----------------------
+There are three main query string parameters that can be passed through several of the endpoints of the API:
 
+* <b>sortBy</b>: sort the output results by publication date (Date Issued), either descending or ascending. By default, 
+the updates data will be returned alphabetically, according to ISO 3166 2 letter country code, but you can order 
+by date. The parameter accepts two values: dateDesc and dateAsc - sorting the output by date descending or 
+ascending, respectively. If an invalid value input then the output is sorted by country code. This can be appended 
+to all of the endpoints, e.g ``/api/all?sortBy=dateDesc``, ``/api/year/2010-2015?sortBy=dateAsc``, 
+``/api/date_range/2019-01-01?sortBy=""`` (sorted by country code).
+* <b>likeness</b>: this is a value between 1 and 100 that increases or reduces the % of similarity/likeness that the 
+inputted search terms have to match to the updates data in the Change and Desc of Change attributes. This can 
+only be used in the /api/search endpoint. Having a higher value should return more exact and less matches and 
+having a lower value will return less exact but more matches, e.g ``/api/search/Paris?likeness=50``, 
+``/api/search/canton?likeness=90`` (default=100).
+* <b>excludeMatchScore</b>: exclude the matchScore` attribute from the search results when using the /api/search endpoint. 
+The match score is the % of a match each returned updates data object is to the search terms, with 100% being an 
+exact match. By default the match score is returned for each object, e.g ``/api/search/addition?excludeMatchScore=1``, 
+``/api/search/New York?excludeMatchScore=1`` (default=0).
+
+Documentation
+-------------
 The API documentation and usage with all useful commands and examples to the API is available below. A demo of the software and API are available [here][demo_iso3166_updates].
+
 
 Get All ISO 3166 updates for all countries
 ------------------------------------------
 ### Request
 `GET /api/all`
 
-    curl -i https://www.iso3166-updates.com/api/all
+    curl -i https://iso3166-updates.vercel.app/api/all
 
 ### Response
     HTTP/2 200 
@@ -61,7 +86,7 @@ Get All ISO 3166 updates for all countries
 ```python
 import requests
 
-request_url = "https://iso3166-updates.com/api/all"
+request_url = "https://iso3166-updates.vercel.app/api/all"
 
 all_request = requests.get(request_url)
 all_request.json() 
@@ -71,7 +96,7 @@ all_request.json()
 ```javascript
 function getData() {
   const response = 
-    await fetch('https://iso3166-updates.com/api/all');
+    await fetch('https://iso3166-updates.vercel.app/api/all');
   const data = await response.json()
 }
 
@@ -85,7 +110,7 @@ Get updates for a specific country e.g. France (FR), Germany (DEU), Honduras (34
 ### Request
 `GET /api/alpha/FR`
 
-    curl -i https://iso3166-updates.com/api/alpha/FR
+    curl -i https://iso3166-updates.vercel.app/api/alpha/FR
 
 ### Response
     HTTP/2 200 
@@ -97,9 +122,9 @@ Get updates for a specific country e.g. France (FR), Germany (DEU), Honduras (34
     "FR":[{"Code/Subdivision change":"Codes...}]
 
 ### Request
-`GET /api/alpha/DE`
+`GET /api/alpha/DEU`
 
-    curl -i https://iso3166-updates.com/api/alpha/DEU
+    curl -i https://iso3166-updates.vercel.app/api/alpha/DEU
 
 ### Response
     HTTP/2 200 
@@ -111,9 +136,9 @@ Get updates for a specific country e.g. France (FR), Germany (DEU), Honduras (34
     {"DE":{}}
 
 ### Request
-`GET /api/alpha/HN`
+`GET /api/alpha/340`
 
-    curl -i https://iso3166-updates.com/api/alpha/340
+    curl -i https://iso3166-updates.vercel.app/api/alpha/340
 
 ### Response
     HTTP/2 200 
@@ -128,7 +153,7 @@ Get updates for a specific country e.g. France (FR), Germany (DEU), Honduras (34
 ```python
 import requests
 
-base_url = "https://iso3166-updates.com/api/"
+base_url = "https://iso3166-updates.vercel.app/api/"
 input_alpha = "FR" #DEU, 340
 
 request_url = base_url + f"alpha/{input_alpha}"
@@ -143,7 +168,7 @@ let input_alpha = "FR"; //DEU, 340
 
 function getData() {
   const response = 
-    await fetch(`https://iso3166-updates.com/api/alpha/${input_alpha}`);
+    await fetch(`https://iso3166-updates.vercel.app/api/alpha/${input_alpha}`);
   const data = await response.json()
 }
 
@@ -157,7 +182,7 @@ Get all updates for a specific year e.g. 2004, 2007
 ### Request
 `GET /api/year/2004`
 
-    curl -i https://iso3166-updates.com/api/year/2004
+    curl -i https://iso3166-updates.vercel.app/api/year/2004
 
 ### Response
     HTTP/2 200 
@@ -171,7 +196,7 @@ Get all updates for a specific year e.g. 2004, 2007
 ### Request
 `GET /api/year/2007`
 
-    curl -i https://iso3166-updates.com/api/year/2007
+    curl -i https://iso3166-updates.vercel.app/api/year/2007
 
 ### Response
     HTTP/2 200 
@@ -186,7 +211,7 @@ Get all updates for a specific year e.g. 2004, 2007
 ```python
 import requests
 
-base_url = "https://iso3166-updates.com/api/"
+base_url = "https://iso3166-updates.vercel.app/api/"
 input_year = "2004" #2007 
 
 request_url = base_url + f"year/{input_year}"
@@ -201,7 +226,7 @@ let input_year = "2004"; //2007
 
 function getData() {
   const response = 
-    await fetch(`https://iso3166-updates.com/api/year/${input_year}`);
+    await fetch(`https://iso3166-updates.vercel.app/api/year/${input_year}`);
   const data = await response.json()
 }
 
@@ -215,7 +240,7 @@ Get updates for a specific country for a specified year e.g. Andorra (AD), Domin
 ### Request
 `GET /api/alpha/AD/year/2007`
 
-    curl -i https://iso3166-updates.com/api/alpha/AD/year/2007
+    curl -i https://iso3166-updates.vercel.app/api/alpha/AD/year/2007
 
 ### Response
     HTTP/2 200 
@@ -229,7 +254,7 @@ Get updates for a specific country for a specified year e.g. Andorra (AD), Domin
 ### Request
 `GET /api/alpha/DM/year/2007`
 
-    curl -i https://iso3166-updates.com/api/alpha/DM/year/2007
+    curl -i https://iso3166-updates.vercel.app/api/alpha/DM/year/2007
 
 ### Response
     HTTP/2 200 
@@ -244,7 +269,7 @@ Get updates for a specific country for a specified year e.g. Andorra (AD), Domin
 ```python
 import requests
 
-base_url = "https://iso3166-updates.com/api/"
+base_url = "https://iso3166-updates.vercel.app/api/"
 input_alpha = "AD" #DM
 input_year = "2007"
 
@@ -261,7 +286,7 @@ let input_year = "2007";
 
 function getData() {
   const response = 
-    await fetch(`https://iso3166-updates.com/api/alpha/${input_alpha}/year/${input_year}`);
+    await fetch(`https://iso3166-updates.vercel.app/api/alpha/${input_alpha}/year/${input_year}`);
   const data = await response.json()
 }
 
@@ -273,9 +298,9 @@ Get updates for a specific country for a specified year range, using country nam
 ------------------------------------------------------------------------------------------------------------------
 
 ### Request
-`GET /api/name/Bosnia/year/2009-2015`
+`GET /api/country_name/Bosnia/year/2009-2015`
 
-    curl -i https://iso3166-updates.com/api/name/Bosnia/year/2009-2015
+    curl -i https://iso3166-updates.vercel.app/api/country_name/Bosnia/year/2009-2015
 
 ### Response
     HTTP/2 200 
@@ -287,9 +312,9 @@ Get updates for a specific country for a specified year range, using country nam
     {"BA":[{"Code/Subdivision change":"","Date Issued":"2015-11-27"...}]}
 
 ### Request
-`GET /api/name/Haiti/year/2009-2015`
+`GET /api/country_name/Haiti/year/2009-2015`
 
-    curl -i https://iso3166-updates.com/api/name/haiti/year/2009-2015
+    curl -i https://iso3166-updates.vercel.app/api/country_name/haiti/year/2009-2015
 
 ### Response
     HTTP/2 200 
@@ -304,11 +329,11 @@ Get updates for a specific country for a specified year range, using country nam
 ```python
 import requests
 
-base_url = "https://iso3166-updates.com/api/"
+base_url = "https://iso3166-updates.vercel.app/api/"
 input_name = "Bosnia" #Haiti
 input_year = "2009-2015"
 
-request_url = base_url + f"name/{input_name}/year/{input_year}"
+request_url = base_url + f"country_name/{input_name}/year/{input_year}"
 
 all_request = requests.get(request_url)
 all_request.json() 
@@ -321,7 +346,7 @@ let input_year = "2007";
 
 function getData() {
   const response = 
-    await fetch(`https://iso3166-updates.com/api/name/${input_name}/year/${input_year}`);
+    await fetch(`https://iso3166-updates.vercel.app/api/country_name/${input_name}/year/${input_year}`);
   const data = await response.json()
 }
 
@@ -335,7 +360,7 @@ Get updates for a specific country less than/greater than a specified year e.g. 
 ### Request
 `GET /api/alpha/IL/year/<2010`
 
-    curl -i https://iso3166-updates.com/api/alpha/IL/year/<2010
+    curl -i https://iso3166-updates.vercel.app/api/alpha/IL/year/<2010
 
 ### Response
     HTTP/2 200 
@@ -349,7 +374,7 @@ Get updates for a specific country less than/greater than a specified year e.g. 
 ### Request
 `GET /api/alpha/LT/year/<2012`
 
-    curl -i https://iso3166-updates.com/api/alpha/LT/year/>2012
+    curl -i https://iso3166-updates.vercel.app/api/alpha/LT/year/>2012
 
 ### Response
     HTTP/2 200 
@@ -364,7 +389,7 @@ Get updates for a specific country less than/greater than a specified year e.g. 
 ```python
 import requests
 
-base_url = "https://iso3166-updates.com/api/"
+base_url = "https://iso3166-updates.vercel.app/api/"
 input_alpha = "IL" #LT
 input_year = ">2012"
 
@@ -380,7 +405,7 @@ let input_alpha = "IL"; //LT
 let input_year = ">2012";
 
 function getData() {
-  const response = await fetch(`https://iso3166-updates.com/api/alpha/${input_alpha}/year/${input_year}`);
+  const response = await fetch(`https://iso3166-updates.vercel.app/api/alpha/${input_alpha}/year/${input_year}`);
   const data = await response.json()
 }
 
@@ -392,9 +417,9 @@ Get all ISO 3166 updates data for a specific country, using country name, e.g. T
 --------------------------------------------------------------------------------------------------------------
 
 ### Request
-`GET /api/name/Tajikistan`
+`GET /api/country_name/Tajikistan`
 
-    curl -i https://iso3166-updates.com/api/name/Tajikistan
+    curl -i https://iso3166-updates.vercel.app/api/country_name/Tajikistan
 
 ### Response
     HTTP/2 200 
@@ -406,9 +431,9 @@ Get all ISO 3166 updates data for a specific country, using country name, e.g. T
     {"TJ":[{"Code/Subdivision change":...}]}
 
 ### Request
-`GET /api/name/Seychelles`
+`GET /api/country_name/Seychelles`
 
-    curl -i https://iso3166-updates.com/api/name/Seychelles
+    curl -i https://iso3166-updates.vercel.app/api/country_name/Seychelles
 
 ### Response
     HTTP/2 200 
@@ -420,9 +445,9 @@ Get all ISO 3166 updates data for a specific country, using country name, e.g. T
     {"SC":[{"Code/Subdivision change":...}]}
 
 ### Request
-`GET /api/name/Uganda`
+`GET /api/country_name/Uganda`
 
-    curl -i https://iso3166-updates.com/api/name/Uganda
+    curl -i https://iso3166-updates.vercel.app/api/country_name/Uganda
 
 ### Response
     HTTP/2 200 
@@ -437,10 +462,10 @@ Get all ISO 3166 updates data for a specific country, using country name, e.g. T
 ```python
 import requests
 
-base_url = "https://iso3166-updates.com/api/"
+base_url = "https://iso3166-updates.vercel.app/api/"
 input_name = "Tajikistan" #Seychelles, Uganda
 
-request_url = base_url + f"name/{input_name}"
+request_url = base_url + f"country_name/{input_name}"
 
 all_request = requests.get(request_url)
 all_request.json() 
@@ -452,7 +477,7 @@ let input_name = "Tajikistan"; //Seychelles, Uganda
 
 function getData() {
   const response = 
-    await fetch(`https://iso3166-updates.com/api/name/${input_name}`);
+    await fetch(`https://iso3166-updates.vercel.app/api/country_name/${input_name}`);
   const data = await response.json()
 }
 
@@ -460,160 +485,131 @@ function getData() {
 var data = JSON.parse(this.response)
 ```
 
-Get all updates for all countries from the past 6 months
--------------------------------------------------------------
+Search for updates using keyword or list of keywords
+----------------------------------------------------
 
 ### Request
-`GET /api/months/6`
+`GET /api/search/addition`
 
-    curl -i https://iso3166-updates.com/api/months/6
+    curl -i https://iso3166-updates.vercel.app/api/search/addition
 
 ### Response
     HTTP/2 200 
-    Date: Thu, 06 Apr 2023 14:36:30 GMT
-    Connection: close
-    Content-Type: application/json
-    Content-Length: 4818
+    content-type: application/json
+    date: Sun, 10 May 2025 09:50:34 GMT
+    server: Vercel
+    content-length: 110473
 
-    {"DZ":[{"Code/Subdivision change":""...}]}
+    [{"Change":"Subdivisions added: 7 parishes.","Country Code":"AD","Date Issued"...}]
+
+
+### Request 
+`GET /api/search/canton,state`
+
+    curl -i https://iso3166-updates.vercel.app/api/search/canton,state
+
+### Response
+    HTTP/2 200 
+    content-type: application/json
+    date: Mon, 11 May 2025 11:10:11 GMT
+    server: Vercel
+    content-length: 7405
+
+    [{"Change":"Change of subdivision category from federal L\u00e4nder to state; update List Source.",...}]
+
+
+### Request
+`GET /api/search/2017-11-27`
+
+    curl -i https://iso3166-updates.vercel.app/api/search/2017-11-27
+
+### Response
+    HTTP/2 200 
+    content-type: application/json
+    date: Mon, 11 May 2025 12:14:17 GMT
+    server: Vercel
+    content-length: 83
+
+    {"Message":"No matching updates found with the given search term(s): 2017-11-27."}
+
+
+### Request 
+`GET /api/search/canton,state`
+
+    curl -i https://iso3166-updates.vercel.app/api/search/canton,state?likeness=80&excludeMatchScore=1
+
+
+### Response
+    HTTP/2 200 
+    content-type: application/json
+    date: Thu, 15 May 2025 10:10:48 GMT
+    server: Vercel
+    content-length: 122709
+
+    [{"Change":"Modification of remark part 2. (Remark part 2: No subdivisions relevant for this standard...)}]
+
+
+
+Get all ISO 3166 updates data within a specified date range, inclusive, e.g. 2015-09-16 to 2017-11-12 or 2005-10-03 to 2009-01-01 or 2020-06-19
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+### Request
+`GET /api/date_range/2015-09-16,2017-11-12`
+
+    curl -i https://iso3166-updates.vercel.app/api/date_range/'2015-09-16,2017-11-12'
+
+### Response
+    HTTP/2 200 
+    content-type: application/json
+    date: Tue, 20 Dec 2024 18:30:11 GMT
+    server: Vercel
+    content-length: 10
+
+### Request
+`GET /api/date_range/2005-10-03,2009-01-01`
+
+    curl -i https://iso3166-updates.vercel.app/api/date_range/'2005-10-03,2009-01-01'?sortBy=dateDesc
+
+### Response
+    HTTP/2 200 
+    content-type: application/json
+    date: Fri, 23 Dec 2024 20:29:01 GMT
+    server: Vercel
+    content-length: 10
+
+### Request
+`GET /api/date_range/2020-06-19
+
+    curl -i https://iso3166-updates.vercel.app/api/date_range/2020-06-19?sortBy=dateAsc
+
+### Response
+    HTTP/2 200 
+    content-type: application/json
+    date: Fri, 23 Dec 2024 23:01:30 GMT
+    server: Vercel
+    content-length: 10
+
 
 ### Python
 ```python
 import requests
 
-base_url = "https://iso3166-updates.com/api/"
-input_month = "6"
+base_url = "https://iso3166-updates.vercel.app/api/"
+input_date_range = "2015-09-16,2017-11-12" #2005-10-03,2009-01-01, 2020-06-19
 
-request_url = base_url + f"months/{input_month}"
+request_url = base_url + f"date_range/{input_date_range}"
 
-all_request = requests.get(request_url)
+all_request = requests.get(request_url, params={"sortBy": "dateDesc"})
 all_request.json() 
 ```
 
 ### Javascript
 ```javascript
-let input_month = "6"; 
+let input_name = "2015-09-16,2017-11-12"; //2005-10-03,2009-01-01, 2020-06-19
 
 function getData() {
   const response = 
-    await fetch(`https://iso3166-updates.com/api/months/${input_month}`);
-  const data = await response.json()
-}
-
-// Begin accessing JSON data here
-var data = JSON.parse(this.response)
-```
-
-Get all updates for all countries from the 12-36 months
--------------------------------------------------------
-
-### Request
-`GET /api/months/12-36`
-
-    curl -i https://iso3166-updates.com/api/months/12-36
-
-### Response
-    HTTP/2 200 
-    Date: Thu, 07 Apr 2023 15:30:30 GMT
-    Connection: close
-    Content-Type: application/json
-    Content-Length: 1400
-
-    {{"CI":[{"Code/Subdivision Change":"",...}]}}
-
-### Python
-```python
-import requests
-
-base_url = "https://iso3166-updates.com/api/"
-input_month = "12-36"
-
-request_url = base_url + f"months/{input_month}"
-
-all_request = requests.get(request_url)
-all_request.json() 
-```
-
-### Javascript
-```javascript
-let input_month = "12-36"; 
-
-function getData() {
-  const response = 
-    await fetch(`https://iso3166-updates.com/api/months/${input_month}`);
-  const data = await response.json()
-}
-
-// Begin accessing JSON data here
-var data = JSON.parse(this.response)
-```
-
-Get all updates for specific country from the past 36 months, e.g. St Kitt's (KN), North Macedonia (MK), Russia (RU)
---------------------------------------------------------------------------------------------------------------------
-
-### Request
-`GET /api/months/36/alpha/KN`
-
-    curl -i https://iso3166-updates.com/api/months/36/alpha/KN
-
-### Response
-    HTTP/2 200 
-    Date: Thu, 06 Mar 2024 11:24:30 GMT
-    Connection: close
-    Content-Type: application/json
-    Content-Length: 3
-
-    {}
-
-### Request
-`GET /api/months/36/alpha/mk`
-
-    curl -i https://iso3166-updates.com/api/months/36/alpha/MK
-
-### Response
-    HTTP/2 200 
-    Date: Thu, 06 Mar 2024 12:01:33 GMT
-    Connection: close
-    Content-Type: application/json
-    Content-Length: 3
-
-    {}
-
-### Request
-`GET /api/months/36/alpha/RU`
-
-    curl -i https://iso3166-updates.com/api/months/36/alpha/RU
-
-### Response
-    HTTP/2 200 
-    Date: Thu, 06 Mar 2024 12:42:02 GMT
-    Connection: close
-    Content-Type: application/json
-    Content-Length: 282
-
-    {"RU":[{"Code/Subdivision Change":""}]}
-
-### Python
-```python
-import requests
-
-base_url = "https://iso3166-updates.com/api/"
-input_month = "36" 
-input_alpha = "KN" #MK, RU
-
-request_url = base_url + f"months/{input_month}/alpha/{input_alpha}"
-
-all_request = requests.get(request_url)
-all_request.json() 
-```
-
-### Javascript
-```javascript
-let input_month = "36";
-
-function getData() {
-  const response = 
-    await fetch(`https://iso3166-updates.com/api/months/${input_month}/alpha/${input_alpha}`);
+    await fetch(`https://iso3166-updates.vercel.app/api/date_range/${input_date_range}`);
   const data = await response.json()
 }
 
