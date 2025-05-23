@@ -1,21 +1,27 @@
 
 let version = "";
 
-//make get request to pypi json endpoint to get the software's current version
-fetch("https://pypi.org/pypi/iso3166-updates/json")
-    .then(response => { 
-    if (!response.ok) { 
-        throw new Error("Error making GET request to PyPI server"); 
-    } 
-    return response.json();
-    })
-    .then(data => { 
-        version = data['info']['version']
-    })
-    .catch(error => { 
-        console.error("Error making GET request to PyPI server: ", error);});
-        
+//make async request to pypi json endpoint to get the software's current version
+async function loadVersion() {
+    try {
+        const response = await fetch("https://pypi.org/pypi/iso3166-updates/json");
+        if (!response.ok) throw new Error("Failed to fetch version");
+        const data = await response.json();
+        const version = data.info.version;
+        const versionElem = document.getElementById("version");
+        console.log("Version: ", version);
+        if (versionElem) {
+            versionElem.innerHTML = "<b>Version: </b>" + version;
+        }
+    } catch (error) {
+        console.error("Error fetching version:", error);
+    }
+}
+
 window.onload = function(){ 
+
+    //pull iso3166-updates version from pypi
+    loadVersion();
 
     //set version to its element after page load
     document.getElementById("version").innerHTML = "<b>Version: </b>" + version;
