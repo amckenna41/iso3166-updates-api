@@ -6,6 +6,7 @@ import urllib.parse
 from thefuzz import fuzz, process
 from urllib.parse import unquote
 from datetime import datetime
+from functools import lru_cache
 
 ########################################################## Endpoints ##########################################################
 '''
@@ -53,13 +54,19 @@ app = Flask(__name__)
 #register routes/endpoints with or without trailing slash
 app.url_map.strict_slashes = False
 
-#json object storing the error message, route and status code 
-# error_message = {}
-# error_message["status"] = 400
-
 #create instance of Updates class and get all ISO 3166 updates data
-iso_updates = Updates()
-all_iso3166_updates = iso_updates.all
+# iso_updates = Updates()
+# all_iso3166_updates = iso_updates.all
+
+@lru_cache()
+def get_updates_instance():
+    """ Cache function for initialization of Updates instance. """
+    return Updates()
+
+@lru_cache()
+def get_all_updates():
+    """ Cache function for all data variable of Updates instance. """
+    return get_updates_instance().all
 
 @app.route('/api')
 @app.route('/')
@@ -92,7 +99,7 @@ def all() -> tuple[dict, int]:
 
     Returns
     =======
-    :jsonify(all_iso3166_updates): json
+    :all_updates: json
         jsonified ISO 3166 updates data.
     :status_code: int
         response status code. 200 is a successful response.
@@ -101,11 +108,11 @@ def all() -> tuple[dict, int]:
     sort_by = (request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')
     
     #output var of all updates
-    all_updates = all_iso3166_updates
+    all_updates = get_all_updates()
     
     #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date
     if (sort_by == 'dateasc' or sort_by == 'datedesc'):
-        all_updates = sort_by_date(all_iso3166_updates, date_asc_desc=sort_by)
+        all_updates = sort_by_date(get_all_updates(), date_asc_desc=sort_by)
 
     return jsonify(all_updates), 200
 
@@ -147,7 +154,7 @@ def api_alpha(input_alpha: str="") -> tuple[dict, int]:
 
     #get the country updates data using the input alpha codes, return error if invalid codes input
     try:
-        iso3166_updates = iso_updates[input_alpha]
+        iso3166_updates = get_updates_instance()[input_alpha]
     except ValueError as ve:
         return jsonify(create_error_message(str(ve), request.url)), 400    
 
@@ -197,7 +204,7 @@ def api_year(input_year: str="") -> tuple[dict, int]:
 
     #get the country updates fot the input years, return error if invalid years input
     try:
-        iso3166_updates = iso_updates.year(input_year)
+        iso3166_updates = get_updates_instance().year(input_year)
     except ValueError as ve:
         return jsonify(create_error_message(str(ve), request.url)), 400    
 
@@ -276,7 +283,7 @@ def api_alpha_year(input_alpha: str="", input_year: str="") -> tuple[dict, int]:
 
     #get updates from iso3166_updates object per country using alpha-2 code
     for code in alpha2_code:
-        iso3166_updates[code] = all_iso3166_updates[code]
+        iso3166_updates[code] = get_all_updates()[code]
 
     #temporary updates object
     temp_iso3166_updates = {}
@@ -284,7 +291,7 @@ def api_alpha_year(input_alpha: str="", input_year: str="") -> tuple[dict, int]:
     #if no valid alpha-2 codes input, use all alpha-2 codes from iso3166 and all updates data
     if ((year != [] and alpha2_code == []) or ((year == [] or year != []) and alpha2_code == [])):
         input_alpha_codes  = list(iso3166.countries_by_alpha2.keys())
-        input_data = all_iso3166_updates
+        input_data = get_all_updates()
     #else set input alpha-2 codes to input parameter value and use corresponding updates data
     else:
         input_alpha_codes = alpha2_code
@@ -442,14 +449,14 @@ def api_country_name(input_country_name: str="") -> tuple[dict, int]:
         for match_name, score in valid_matches:
             alpha2 = iso3166.countries_by_name[match_name.upper()].alpha2
             if alpha2 not in iso3166_updates_:
-                iso3166_updates_[alpha2] = all_iso3166_updates[alpha2]
+                iso3166_updates_[alpha2] = get_all_updates()[alpha2]
 
         #use iso3166 package to find corresponding alpha-2 code from its name
         alpha2_code.append(iso3166.countries_by_name[name_matches[0][0].upper()].alpha2)
     
     #get country data from ISO 3166-2 object, using alpha-2 code
     for code in alpha2_code:
-        iso3166_updates_[code] = all_iso3166_updates[code]
+        iso3166_updates_[code] = get_all_updates()[code]
 
     #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
     if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(iso3166_updates_) > 1:
@@ -556,14 +563,14 @@ def api_country_name_year(input_country_name: str="", input_year: str="") -> tup
         for match_name, score in valid_matches:
             alpha2 = iso3166.countries_by_name[match_name.upper()].alpha2
             if alpha2 not in iso3166_updates_:
-                iso3166_updates_[alpha2] = all_iso3166_updates[alpha2]
+                iso3166_updates_[alpha2] = get_all_updates()[alpha2]
 
         #use iso3166 package to find corresponding alpha-2 code from its name
         alpha2_code.append(iso3166.countries_by_name[name_matches[0][0].upper()].alpha2)
     
     #get country data from ISO 3166-2 object, using alpha-2 code
     for code in alpha2_code:
-        iso3166_updates_[code] = all_iso3166_updates[code]
+        iso3166_updates_[code] = get_all_updates()[code]
 
     #parse and validate input year parameter 
     year, year_range, year_greater_than, year_less_than, year_not_equal, year_error, year_error_message = validate_year(input_year)
@@ -673,11 +680,9 @@ def api_search(input_search_term: str="") -> tuple[dict, int]:
     #pull sortBy query string parameter, that allows sorting by country code or publication date, ascending/descending
     sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
 
-    print("search_terms before", input_search_term)
-
     #split search terms into comma separated list, remove all whitespace & unicode characters
-    decoded_term = unquote(input_search_term)
-    search_terms = [term.strip().lower() for term in decoded_term.split(",")]
+    search_terms = unquote(input_search_term)
+    # search_terms = [term.strip().lower() for term in decoded_term.split(",")]
     
     #parse likeness query string param, used as a % cutoff for likeness of subdivision names, raise error if invalid type or value input
     try:
@@ -692,78 +697,12 @@ def api_search(input_search_term: str="") -> tuple[dict, int]:
     #parse query string parameter that allows user to exclude the Matching % score from search results, by default it is included in results
     exclude_match_score = (request.args.get('excludeMatchScore') or request.args.get('excludematchscore') or "false").lower().rstrip('/') in ['true', '1', 'yes']
 
-    #store search results
-    search_results = []
-
-    #iterate through main country updates data object 
-    for country_code, updates in all_iso3166_updates.items():
-        for update in updates:
-            #combine main change and description attributes into one search space, add date issued attributes to separate var
-            combined_text = f"{update['Change']} {update.get('Description of Change', '')}".lower()
-            full_text = combined_text + " " + update.get('Date Issued', '').strip().lower()
-
-            #iterate over input search terms 
-            for term in search_terms:
-                score = 0
-                input_date_original = convert_date_format(term)
-                temp_search_result = {"Country Code": country_code, **update}
-
-                #include date only if search term is a date
-                if input_date_original is not None:
-                    input_date_converted = str(input_date_original).split(" ")[0]
-                    full_text = combined_text + " " + update.get('Date Issued', '').strip().lower()
-                    score = fuzz.partial_ratio(input_date_converted, full_text)
-                
-                #looking for exact matches
-                elif search_likeness_score == 100:
-                    full_text = combined_text  # exclude date
-                    #if spaces in search term text
-                    if " " in term:
-                        if term in full_text:
-                            score = 100
-                        else:
-                            score = 0
-                    #use regex to search for keyword in text
-                    else:
-                        words = re.findall(r'\b\w+\b', full_text)
-                        if term in words:
-                            score = 100
-                        else:
-                            score = 0
-                #get matching results using fuzzy search
-                else:
-                    full_text = combined_text  # exclude date
-                    score = fuzz.partial_ratio(term, full_text)
-
-                #add object to search results var if the matching score is above search likeness
-                if score >= search_likeness_score:
-                    temp_search_result["Match Score"] = score
-                    search_results.append(temp_search_result)
+    #call search function in iso3166-updates package, passing in likeness score & excludeMatchScore parameters
+    search_results = get_updates_instance().search(search_terms, likeness_score=search_likeness_score, exclude_match_score=exclude_match_score)
 
     #return message that no search results were found
     if not search_results:
-        return jsonify({"Message": f"No matching updates found with the given search term(s): {", ".join(search_terms)}."}), 200
-
-    #exclude matching score % if query string parameter is set
-    if exclude_match_score:
-        grouped_results = {}
-
-        #iterate through each search result object, remove matchScore, remove Country Code attribute
-        for item in search_results:
-            item.pop("Match Score", None)
-            cc = item["Country Code"]
-            item_copy = {k: v for k, v in item.items() if k != "Country Code"}  #remove top-level key
-            grouped_results.setdefault(cc, []).append(item_copy)
-
-        #if sort by parameters input, resort the objects
-        if sort_by in ['datedesc', 'dateasc']:
-            for cc in grouped_results:
-                grouped_results[cc] = sort_by_date(grouped_results[cc])
-
-        return jsonify(grouped_results), 200
-    else:
-        #match score attribute included in output, sort using it, highest match score first 
-        search_results.sort(key=lambda x: x["Match Score"], reverse=True)
+        return jsonify({"Message": f"No matching updates found with the given search term(s): {search_terms}. Try using the query string parameter '?likeness' and reduce the likeness score to expand the search space, '?likeness=30' will return subdivision data that have a 30% match to the input name. The current likeness score is set to {search_likeness_score}."}), 200
 
     #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
     if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(search_results) > 1:
@@ -833,7 +772,7 @@ def api_date_range(input_date_range: str="") -> tuple[dict, int]:
         start_date, end_date = end_date, start_date
 
     #iterate over all updates data, adding all data that's within desired date range
-    for country_code, updates in all_iso3166_updates.items():
+    for country_code, updates in get_all_updates().items():
         filtered_changes = []
         for update in updates:
 
@@ -919,7 +858,7 @@ def api_date_range_alpha(input_alpha: str="", input_date_range: str="") -> tuple
 
     #get the country updates data using the input alpha codes, return error if invalid codes input
     try:
-        all_iso3166_updates = iso_updates[input_alpha]
+        all_iso3166_updates_ = get_updates_instance()[input_alpha]
     except ValueError as ve:
         return jsonify(create_error_message(str(ve) , request.url)), 400 
 
@@ -947,7 +886,7 @@ def api_date_range_alpha(input_alpha: str="", input_date_range: str="") -> tuple
         start_date, end_date = end_date, start_date
 
     #iterate over all updates data, adding all data that's within desired date range
-    for country_code, updates in all_iso3166_updates.items():
+    for country_code, updates in all_iso3166_updates_.items():
         filtered_changes = []
         for update in updates:
 

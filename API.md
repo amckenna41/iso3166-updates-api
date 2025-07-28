@@ -1,3 +1,5 @@
+<a name="TOP"></a>
+
 # ISO 3166 Updates API 🌎
 
 ![Vercel](https://therealsujitk-vercel-badge.vercel.app/?app=iso3166-2-api)
@@ -6,17 +8,9 @@ The main API endpoint and homepage is:
 
 > https://iso3166-updates.vercel.app/
 
-The other endpoints available in the API are:
-* https://iso3166-updates.vercel.app/api/all
-* https://iso3166-updates.vercel.app/api/alpha/<input_alpha>
-* https://iso3166-updates.vercel.app/api/year/<input_year>
-* https://iso3166-updates.vercel.app/api/search/<input_search>
-* https://iso3166-updates.vercel.app/api/date_range/<input_date_range>
-* https://iso3166-updates.vercel.app/api/alpha/<input_alpha>/year/<input_year>
-* https://iso3166-updates.vercel.app/api/date_range/<input_date_range>/alpha/<input_alpha>
-* https://iso3166-updates.vercel.app/api/date_range/<input_date_range>/year/<input_year>
+The other endpoints available in the API are `/api/all`, `/api/alpha/<input_alpha>`, `/api/year/<input_year>`, `/api/country_name/<input_country_name>`, `/api/search/<input_search>` and `/api/date_range/<input_date_range>`.
 
-The main paths/endpoints available in the API are - `/api/all`, `/api/alpha`, `/api/year`, `/api/country_name`, `/api/search` and `/api/date_range`.
+* `/api`: main homepage and API documentation.
 
 * `/api/all`: get all of the ISO 3166 updates/changes data for all countries and publication years.
 
@@ -29,8 +23,6 @@ The main paths/endpoints available in the API are - `/api/all`, `/api/alpha`, `/
 * `/api/search`: get all the ISO 3166 updates/changes data for one or more countries that have the inputted search terms. A single keyword/term or list of them can be passed to the API e.g. `/api/search/Brazil`, `/api/search/Addition,deletion`, `/api/search/2017-11-23`. A closeness function is used to search through the updates objects, finding any applicable matches to the keywords input via the Change and Description of Change attributes. If a date is explicitly input then the Date Issued attributes will also be searched. If no matching objects found then an error will be returned. 
 
 * `/api/date_range`: get all the ISO 3166 updates/changes data for one or more countries that were published within a specified input date range e.g. `/api/date_range/2011-12-09,2014-01-10`, `/api/date_range/2013-08-02,2015-07-10`, `/api/date_range/2018-05-12`. If a single date is input it will act as the starting date within the date range, with the end of the range being the current day. If an invalid date type/format value is input then an error will be returned. This endpoint can be used in conjunction with the **alpha** endpoint to get the country updates for a specific country and date range. This will be in in the format `/api/alpha/<input_alpha>/date_range/<input_date_range>`.
-
-* `/api`: main homepage and API documentation.
 
 Attributes
 ----------

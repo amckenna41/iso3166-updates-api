@@ -14,6 +14,7 @@
 - In the /search endpoint, when an explicit date is input as the search term, the date issued column is included in the search. If date is input, search likeness parameter has to be 1
 - Sort by date parameter now expanded so you can sort by ascending or descending date
 - Tooltip appears when endpoint url copied to clipboard
+- Added LRU caching mechanism for the all updates data variable 
 
 ### Changed
 - Changed "Code/Subdivision Change" to "Change" & "Edition/Newsletter" to "Source"
@@ -25,6 +26,7 @@
 - If % match score excluded from search, dict of results returned.
 - Likeness score for search changed from float to an int between 1 and 100
 - /name endpoint changed to /country_name
+- Most functionalities from index.py moved to the backend using the iso3166-updates software itself, rather than having individual functionalities per function on API
 
 ### Fixed
 - Error with dynamically importing version from pypi
@@ -41,6 +43,8 @@
 - Fix with trailing/leading commas in the endpoints
 - Several API.md fixes
 - Version not displaying correctly on main API homepage
+- Fixed several of the unit tests which were using some of the data in the previous iso3166-2 version
+- Fixed the error with programmatically pulling the latest month update for the software 
 
 ## v1.7.0
 

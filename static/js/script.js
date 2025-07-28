@@ -1,5 +1,6 @@
 
 let version = "";
+let lastUpdated = "";
 
 //make async request to pypi json endpoint to get the software's current version
 async function loadVersion() {
@@ -7,24 +8,61 @@ async function loadVersion() {
         const response = await fetch("https://pypi.org/pypi/iso3166-updates/json");
         if (!response.ok) throw new Error("Failed to fetch version");
         const data = await response.json();
-        const version = data.info.version;
-        const versionElem = document.getElementById("version");
+        version = data.info.version;
         console.log("Version: ", version);
-        if (versionElem) {
-            versionElem.innerHTML = "<b>Version: </b>" + version;
-        }
+        // const versionElem = document.getElementById("version");
+        // if (versionElem) {
+        //     versionElem.innerHTML = "<b>Version: </b>" + version;
+        // }
     } catch (error) {
         console.error("Error fetching version:", error);
     }
 }
 
-window.onload = function(){ 
+//make async request to pypi json endpoint to get the software's latest month update
+async function loadLatestUpdate() {
+    try {
+        const response = await fetch("https://pypi.org/pypi/iso3166-updates/json");
+        if (!response.ok) throw new Error("Failed to fetch version metadata");
+        const data = await response.json();
+
+        const latestVersion = data.info.version;
+        const releaseFiles = data.releases[latestVersion];
+        
+        if (!releaseFiles || releaseFiles.length === 0) {
+            throw new Error("No release files found for the latest version");
+        }
+
+        const uploadTime = releaseFiles[0].upload_time_iso_8601 || releaseFiles[0].upload_time;
+        const uploadDate = new Date(uploadTime);
+
+        // lastUpdated = (uploadDate.getUTCMonth() + 1) + uploadDate.getUTCFullYear()
+        lastUpdated = new Intl.DateTimeFormat("en-US", {
+            year: "numeric",
+            month: "long"
+        }).format(uploadDate);
+
+        console.log("Last Updated: ", lastUpdated);
+        
+    } catch (error) {
+        console.error("Error fetching update date:", error);
+    }
+}
+
+window.onload = async function(){ 
 
     //pull iso3166-updates version from pypi
-    loadVersion();
+    await loadVersion();
 
+    //pull iso3166-updates latest month and year from pypi
+    await loadLatestUpdate();
+    
+    console.log("lastUpdated", lastUpdated)
     //set version to its element after page load
     document.getElementById("version").innerHTML = "<b>Version: </b>" + version;
+
+    //set latest update month to its element after page load
+    document.getElementById("last-updated").innerHTML = "<b>Last Updated: </b>" + lastUpdated;
 
     //iterate over each menu section element, highlight it and scroll to it on page when hovered over & clicked
     [].forEach.call(document.querySelectorAll('.scroll-to-link'), function (div) {
@@ -145,12 +183,13 @@ window.onload = function(){
             navigator.clipboard.writeText(apiURL).then(() => {
                 console.log('API URL copied to clipboard: ' + apiURL);
 
-                // Show tooltip
+                //show tooltip
                 const tooltip = button.querySelector('.tooltip-text');
                 if (tooltip) {
                     tooltip.style.visibility = 'visible';
                     tooltip.style.opacity = '1';
 
+                    //set timeout for tooltip
                     setTimeout(() => {
                         tooltip.style.visibility = 'hidden';
                         tooltip.style.opacity = '0';
@@ -161,47 +200,3 @@ window.onload = function(){
     });
 
 }
-//     //iterate over all copy to clipboard buttons and create event listener that copies the API URL once clicked
-//     // let copyTextBtn1 = document.querySelector("#copy-text-btn1");
-//     let copyTextBtn2 = document.querySelector("#copy-text-btn2");
-//     let copyTextBtn3 = document.querySelector("#copy-text-btn3");
-//     let copyTextBtn4 = document.querySelector("#copy-text-btn4");
-//     let copyTextBtn5 = document.querySelector("#copy-text-btn5");
-//     let copyTextBtn6 = document.querySelector("#copy-text-btn6");
-
-//     // copyTextBtn1.addEventListener("click", function () {
-//     //     let apiURL = copyTextBtn1.getAttribute('data-api-url')
-//     //     navigator.clipboard.writeText(apiURL);
-//     //     console.log('API URL copied to clipboard: ' + apiURL);
-//     // });
-
-//     copyTextBtn2.addEventListener("click", function () {
-//         let apiURL = copyTextBtn2.getAttribute('data-api-url')
-//         navigator.clipboard.writeText(apiURL);
-//         console.log('API URL copied to clipboard: ' + apiURL);
-//     });
-
-//     copyTextBtn3.addEventListener("click", function () {
-//         let apiURL = copyTextBtn3.getAttribute('data-api-url')
-//         navigator.clipboard.writeText(apiURL);
-//         console.log('API URL copied to clipboard: ' + apiURL);
-//     });
-
-//     copyTextBtn4.addEventListener("click", function () {
-//         let apiURL = copyTextBtn4.getAttribute('data-api-url')
-//         navigator.clipboard.writeText(apiURL);
-//         console.log('API URL copied to clipboard: ' + apiURL);
-//     });
-    
-//     copyTextBtn5.addEventListener("click", function () {
-//         let apiURL = copyTextBtn5.getAttribute('data-api-url')
-//         navigator.clipboard.writeText(apiURL);
-//         console.log('API URL copied to clipboard: ' + apiURL);
-//     });
-
-//     copyTextBtn6.addEventListener("click", function () {
-//         let apiURL = copyTextBtn6.getAttribute('data-api-url')
-//         navigator.clipboard.writeText(apiURL);
-//         console.log('API URL copied to clipboard: ' + apiURL);
-//     });
-// }

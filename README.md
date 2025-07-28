@@ -1,3 +1,5 @@
+<a name="TOP"></a>
+
 # iso3166-updates-api 🌎
 
 <!-- ![Vercel](https://vercelbadge.vercel.app/api/amckenna41/iso3166-updates-frontend) -->
@@ -118,7 +120,7 @@ inputted search terms have to match to the updates data in the Change and Desc o
 only be used in the /api/search endpoint. Having a higher value should return more exact and less matches and 
 having a lower value will return less exact but more matches, e.g ``/api/search/Paris?likeness=50``, 
 ``/api/search/canton?likeness=90`` (default=100).
-* <b>excludeMatchScore</b>: exclude the matchScore` attribute from the search results when using the /api/search endpoint. 
+* <b>excludeMatchScore</b>: exclude the matchScore attribute from the search results when using the /api/search endpoint. 
 The match score is the % of a match each returned updates data object is to the search terms, with 100% being an 
 exact match. By default the match score is returned for each object, e.g ``/api/search/addition?excludeMatchScore=1``, 
 ``/api/search/New York?excludeMatchScore=1`` (default=0).
@@ -176,10 +178,10 @@ References
 
 Support
 -------
-[<img src="https://img.shields.io/github/stars/amckenna41/iso3166-updates-api?color=green&label=star%20it%20on%20GitHub" width="132" height="20" alt="Star it on GitHub">](https://github.com/amckenna41/iso3166-updates-api) <br>
+[<img src="https://img.shields.io/github/stars/amckenna41/iso3166-updates-api?color=green&label=star%20it%20on%20GitHub" width="132" height="20" alt="Star it on GitHub">](https://github.com/amckenna41/iso3166-updates-api) <br><br>
 <a href="https://www.buymeacoffee.com/amckenna41" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
-[Back to top](#iso3166-updates-api)
+[Back to top](#TOP)
 
 [demo_iso3166_updates]: https://colab.research.google.com/drive/1oGF3j3_9b_g2qAmBtv3n-xO2GzTYRJjf?usp=sharing
 [flask]: https://flask.palletsprojects.com/en/2.3.x/
