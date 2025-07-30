@@ -54,6 +54,8 @@ class Updates_Api_Tests(unittest.TestCase):
     test_date_range_alpha_endpoint:
         testing /date_range/alpha endpoint, validating correct data and output object returned, using a variety of date 
         ranges and alpha country codes. 
+    test_version:
+        testing the correct and up-to-date version of the iso3166-2 software is being used by the API.
     """     
     def setUp(self):
         """ Initialise test variables including base urls for API. """
@@ -71,7 +73,8 @@ class Updates_Api_Tests(unittest.TestCase):
         self.country_name_base_url = self.base_url + '/country_name/'
         self.date_range_url = self.base_url + '/date_range/'
         self.search_url = self.base_url + '/search/'
-
+        self.version_base_url = self.base_url + '/version'
+        
         #correct column/key names for dict returned from api
         self.expected_output_columns = ["Change", "Date Issued", "Description of Change", "Source"]
 
@@ -1238,6 +1241,15 @@ class Updates_Api_Tests(unittest.TestCase):
         test_request_search9 = requests.get(self.search_url + test_search1, headers=self.user_agent_header, params={"likeness": "-100"}).json() #likeness=-100
         test_request_search9_expected = {"message": "Likeness query string parameter value must be between 0 and 100.", "path": "https://iso3166-updates.vercel.app/api/search/parishes?likeness=-100", "status": 400}
         self.assertEqual(test_request_search9, test_request_search9_expected, f"Expected and observed output error objects do not match:\n{test_request_search9}")
+
+    # @unittest.skip("")
+    def test_version(self):
+        """ Testing the correct version of the iso3166-updates software is being used by the API. """
+#1.)
+        iso3166_updates_api_version = requests.get(self.version_base_url, headers=self.user_agent_header).json()
+
+        print("iso3166_updates_api_version", iso3166_updates_api_version)
+        self.assertEqual(iso3166_updates_api_version, self.__version__, f"Expected and observed version of the iso3166-updates software do not match {iso3166_updates_api_version}.")
 
 def extract_date(date_str: str) -> datetime.date:
     """

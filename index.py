@@ -54,10 +54,6 @@ app = Flask(__name__)
 #register routes/endpoints with or without trailing slash
 app.url_map.strict_slashes = False
 
-#create instance of Updates class and get all ISO 3166 updates data
-# iso_updates = Updates()
-# all_iso3166_updates = iso_updates.all
-
 @lru_cache()
 def get_updates_instance():
     """ Cache function for initialization of Updates instance. """
@@ -1246,6 +1242,20 @@ def convert_date_format(date: str) -> str|None:
 def create_error_message(message: str, path: str, status: int = 400) -> dict:
     """ Helper function that returns error message when one occurs in Flask app. """
     return {"message": message, "path": path, "status": status}
+
+@app.route('/clear-cache')
+@app.route('/api/clear-cache')
+def clear_cache():
+    """ Clear cache of Updates class instance and all cached subdivision data. Mainly used for dev. """
+    get_updates_instance.cache_clear()
+    get_all_updates.cache_clear()
+    return 'Cache cleared'
+
+@app.route('/version')
+@app.route('/api/version')
+def get_version():
+    """ Get the current version of the iso3166-updates being used by the API. Mainly used for dev. """
+    return get_updates_instance().__version__
 
 @app.errorhandler(404)
 def not_found(e: int) -> tuple[dict, int]:

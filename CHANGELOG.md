@@ -15,6 +15,8 @@
 - Sort by date parameter now expanded so you can sort by ascending or descending date
 - Tooltip appears when endpoint url copied to clipboard
 - Added LRU caching mechanism for the all updates data variable 
+- Added a dev only endpoint called '/clear-cache that clears the cached Updates class instance and any updates data
+- Added a dev only endpoint called /version that outputs the current version of the iso3166-updates software currently being used
 
 ### Changed
 - Changed "Code/Subdivision Change" to "Change" & "Edition/Newsletter" to "Source"
