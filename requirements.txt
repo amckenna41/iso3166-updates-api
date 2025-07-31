@@ -1,6 +1,6 @@
 flask
 iso3166
-iso3166-updates
+iso3166-updates>=1.8.4
 python-dateutil
 requests
 thefuzz

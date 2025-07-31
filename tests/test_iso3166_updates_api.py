@@ -74,7 +74,7 @@ class Updates_Api_Tests(unittest.TestCase):
         self.date_range_url = self.base_url + '/date_range/'
         self.search_url = self.base_url + '/search/'
         self.version_base_url = self.base_url + '/version'
-        
+
         #correct column/key names for dict returned from api
         self.expected_output_columns = ["Change", "Date Issued", "Description of Change", "Source"]
 
@@ -98,7 +98,7 @@ class Updates_Api_Tests(unittest.TestCase):
         # last_updated = soup.find(id='last-updated').text.split(': ')[1]
         author = soup.find(id='author').text.split(': ')[1]
 
-        # self.assertEqual(version, "1.8.3", f"Expected API version to be 1.8.3, got {version}.")
+        # self.assertEqual(version, "1.8.4", f"Expected API version to be 1.8.4, got {version}.")
         # self.assertEqual(last_updated, "May 2025", f"Expected last updated date to be May 2025, got {last_updated}.")
         self.assertEqual(author, "AJ", f"Expected author to be AJ, got {author}.")
 #2.)
@@ -112,7 +112,7 @@ class Updates_Api_Tests(unittest.TestCase):
         """ Testing '/api/all' endpoint that returns all updates data for all countries. """
 #1.)    
         self.assertIsInstance(self.test_request_all.json(), dict, f"Expected output object of API to be of type dict, got {type(self.test_request_all.json())}.")
-        self.assertEqual(len(self.test_request_all.json()), 249, f"Expected there to be 249 elements in output object, got {len(self.test_request_all.json())}.")
+        self.assertEqual(len(self.test_request_all.json()), 250, f"Expected there to be 250 elements in output object, got {len(self.test_request_all.json())}.")
         self.assertEqual(self.test_request_all.status_code, 200, f"Expected 200 status code from request, got {self.test_request_all.status_code}.")
         self.assertEqual(self.test_request_all.headers["content-type"], "application/json", f"Expected Content type to be application/json, got {self.test_request_all.headers['content-type']}.")
 
@@ -1246,9 +1246,7 @@ class Updates_Api_Tests(unittest.TestCase):
     def test_version(self):
         """ Testing the correct version of the iso3166-updates software is being used by the API. """
 #1.)
-        iso3166_updates_api_version = requests.get(self.version_base_url, headers=self.user_agent_header).json()
-
-        print("iso3166_updates_api_version", iso3166_updates_api_version)
+        iso3166_updates_api_version = requests.get(self.version_base_url, headers=self.user_agent_header).content.decode("utf-8")
         self.assertEqual(iso3166_updates_api_version, self.__version__, f"Expected and observed version of the iso3166-updates software do not match {iso3166_updates_api_version}.")
 
 def extract_date(date_str: str) -> datetime.date:
