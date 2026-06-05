@@ -132,7 +132,27 @@
                             endpoint. The match score is the % of a match each returned updates data object is to the search terms, 
                             with 100% being an exact match. By default the match score is returned for each object, 
                             e.g /api/search/addition?excludeMatchScore=1, /api/search/New York?excludeMatchScore=1 (default=0).</li>
+                        <li><b>exclude</b>: URL-safe alternative to the <code>&lt;&gt;YEAR</code> path syntax for year-based 
+                            endpoints. Use <code>/api/year?exclude=2020</code> instead of <code>/api/year/&lt;&gt;2020</code> 
+                            (or its URL-encoded form <code>/api/year/%3C%3E2020</code>) to exclude a specific year. 
+                            e.g /api/year?exclude=2020, /api/alpha/DE/year?exclude=2019.</li>
+                        <li><b>fields</b>: comma-separated list of field names to include in the update records. Valid field names 
+                            are: Change, Description of Change, Date Issued, Source, Country Code, Match Score. Unknown field names 
+                            are silently ignored. If no valid fields remain, the full record is returned. 
+                            e.g /api/all?fields=Change,Date Issued, /api/year/2020?fields=Change,Source.</li>
+                        <li><b>limit</b>: (/api/all only) maximum number of countries (or records when sorted by date) to return per 
+                            page. Used together with <b>offset</b> for pagination. 
+                            e.g /api/all?limit=10&amp;offset=0.</li>
+                        <li><b>offset</b>: (/api/all only) number of countries (or records) to skip before returning results. 
+                            Used together with <b>limit</b> for pagination. 
+                            e.g /api/all?limit=10&amp;offset=20.</li>
                     </ul>
+                    <p>All successful responses are wrapped in a standard envelope: 
+                        <code>{"data": {...}, "meta": {"count": N, "generated": "&lt;ISO timestamp&gt;"}}</code>. 
+                        Paginated <code>/api/all</code> responses also include <code>total</code>, <code>offset</code>, 
+                        and <code>limit</code> in the meta object. Error responses (HTTP 400) are not wrapped.</p>
+                    <p>All responses include informational rate limit headers: 
+                        <code>X-RateLimit-Limit: 500</code> and <code>X-RateLimit-Policy: 500;w=3600</code>.</p>
                 </p>
             </div>
 

@@ -35,7 +35,7 @@ There are four main data attributes for each country updates object:
 
 Query String Parameters
 -----------------------
-There are three main query string parameters that can be passed through several of the endpoints of the API:
+There are several query string parameters that can be passed through the API endpoints:
 
 * <b>sortBy</b>: sort the output results by publication date (Date Issued), either descending or ascending. By default, 
 the updates data will be returned alphabetically, according to ISO 3166 2 letter country code, but you can order 
@@ -52,6 +52,61 @@ having a lower value will return less exact but more matches, e.g ``/api/search/
 The match score is the % of a match each returned updates data object is to the search terms, with 100% being an 
 exact match. By default the match score is returned for each object, e.g ``/api/search/addition?excludeMatchScore=1``, 
 ``/api/search/New York?excludeMatchScore=1`` (default=0).
+* <b>exclude</b>: URL-safe alternative to the `<>YEAR` path syntax for year-based endpoints. Use 
+``/api/year?exclude=2020`` instead of ``/api/year/<>2020`` to exclude a specific year. This avoids the need 
+to URL-encode the `<>` characters (as `%3C%3E`). E.g. ``/api/year?exclude=2020``, 
+``/api/alpha/DE?exclude=2019``.
+* <b>fields</b>: comma-separated list of field names to include in the update records. Only valid field names 
+are accepted: `Change`, `Description of Change`, `Date Issued`, `Source`, `Country Code`, `Match Score`. 
+Unknown field names are silently ignored. If no valid fields remain, the full record is returned. 
+E.g. ``/api/all?fields=Change,Date Issued``, ``/api/year/2020?fields=Change,Source``.
+* <b>limit</b>: (``/api/all`` only) maximum number of countries (or records, if sorted by date) to return per 
+page. Used together with `offset` for pagination. E.g. ``/api/all?limit=10&offset=0``.
+* <b>offset</b>: (``/api/all`` only) number of countries (or records) to skip before returning results. 
+Used together with `limit` for pagination. E.g. ``/api/all?limit=10&offset=20``.
+
+Response Envelope
+-----------------
+All successful (HTTP 200) responses are wrapped in a standard JSON envelope:
+
+```json
+{
+  "data": { ... },
+  "metadata": {
+    "count": 250,
+    "generated": "2024-01-15T12:34:56.789012"
+  }
+}
+```
+
+The `metadata` object for paginated ``/api/all`` responses additionally includes `total`, `offset`, and `limit` fields:
+
+```json
+{
+  "data": { ... },
+  "metadata": {
+    "count": 10,
+    "generated": "2024-01-15T12:34:56.789012",
+    "total": 250,
+    "offset": 0,
+    "limit": 10
+  }
+}
+```
+
+Error responses (HTTP 400) are **not** wrapped and return the error object directly:
+
+```json
+{"message": "...", "path": "...", "status": 400}
+```
+
+Rate Limit Headers
+------------------
+All responses include informational rate limit headers. These are advisory only and not enforced server-side 
+(the API runs on serverless infrastructure):
+
+* `X-RateLimit-Limit: 500`
+* `X-RateLimit-Policy: 500;w=3600`
 
 Documentation
 -------------

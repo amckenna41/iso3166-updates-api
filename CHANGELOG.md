@@ -1,6 +1,52 @@
 # Change Log
 
 
+## v1.8.7
+
+### Added
+- CORS support via `flask-cors`; `Access-Control-Allow-Origin` header now present on all API responses, enabling browser-based clients to consume the API directly.
+- `flask-cors` added to `requirements.txt` (was imported but missing, causing Vercel deployment failures).
+- `requirements-test.txt` added for test-only dependencies (`beautifulsoup4`, `fake_useragent`, `jsonschema`), keeping them separate from the production requirements.
+- New test cases in `tests/test_iso3166_updates_api.py`:
+  - `test_cors_headers` — asserts `Access-Control-Allow-Origin` is present on `/all`, `/alpha`, and `/search` responses.
+  - `test_sort_ascending` — verifies `sortBy=dateAsc` returns 911 records in oldest-first order and is the exact reverse of `dateDesc`.
+  - `test_year_endpoint_list` — exercises the comma-separated year list path in `validate_year` (e.g. `2010,2015`).
+  - `test_all_endpoint_invalid_pagination` — confirms `limit=-1`, `offset=-5`, and `limit=abc` all return HTTP 400.
+  - `test_404_endpoint` — confirms unknown paths return HTTP 404.
+  - `test_fields_parameter_other_endpoints` — verifies `?fields=` projection on `/alpha` and `/search` (was only tested on `/all`).
+  - `test_metadata_generated_format` — validates `metadata.generated` matches `YYYY-MM-DDTHH:MM:SSZ` across all endpoint families.
+  - `test_country_name_aliases` — tests `names_converted` alias resolution for `Russia`, `United Kingdom`, `Iran`, `Turkey`, and `South Korea`.
+
+### Changed
+- `setUpClass` now auto-boots a local Flask server on an ephemeral port when no `BASE_URL` environment variable is set, eliminating dependency on the live production API during testing.
+- `setUp` reduced to per-test `User-Agent` rotation only; expensive operations (`Updates()` instantiation, `/api/all` fetch) moved to `setUpClass` so they run once per suite rather than once per test.
+- `datetime.utcnow()` (deprecated since Python 3.12) replaced with `datetime.now(timezone.utc)` throughout `index.py`.
+- `sort_by` normalisation (`(request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')`) applied consistently across all endpoints; previously some endpoints only lowercased one of the two param names.
+- Leading space removed from the `"Sao Tome and Principe"` entry in `names_converted` dict.
+- `clear_cache` endpoint now returns HTTP 403 when `app.debug` is `False`, preventing cache manipulation on production deployments.
+
+### Fixed
+- `api_country_name_year`: sort result was assigned to a new local variable `iso3166_updates` instead of the existing `iso3166_updates_`, causing the sort to be silently discarded. Now correctly assigned.
+- `validate_year`: dummy `_ = False` placeholder returns replaced with explicit `True` / `[]` return values.
+- `convert_date_format`: two unreachable `try/except` blocks after a `for/else` statement removed (dead code).
+
+
+## v1.8.6
+
+### Added
+- Standardised JSON response envelope for all successful (HTTP 200) endpoints: `{"data": {...}, "metadata": {"count": N, "generated": "<ISO timestamp>"}}`. Error responses (HTTP 400) remain unwrapped.
+- Pagination support (`?limit=N&offset=M`) for the `/api/all` endpoint; paginated responses include `total`, `offset`, and `limit` in the `metadata` object.
+- `?fields=` query parameter for projecting specific fields from update records (e.g. `?fields=Change,Date+Issued`). Valid fields: `Change`, `Description of Change`, `Date Issued`, `Source`, `Country Code`, `Match Score`.
+- `?exclude=YEAR` query parameter as a URL-safe alternative to the `<>YEAR` path syntax for year exclusion on year-based endpoints (e.g. `/api/year?exclude=2020` instead of `/api/year/<>2020` or `/api/year/%3C%3E2020`).
+- Informational rate-limit headers added to all responses: `X-RateLimit-Limit: 500` and `X-RateLimit-Policy: 500;w=3600` (advisory only; not enforced on serverless infrastructure).
+
+### Changed
+- All successful API responses now wrapped in `{"data": ..., "metadata": {...}}` envelope (breaking change for clients consuming raw response body).
+- Year endpoint empty-input error message updated to mention `?exclude=YEAR` as an alternative.
+- Tests updated to access response data via `.json()["data"]` for all successful responses; new test cases added for envelope structure, pagination, fields projection, `?exclude` param, and rate-limit headers.
+- API.md, README.md and templates/index.html updated to document all new query string parameters, the response envelope format, and rate-limit headers.
+
+
 ## v1.8.0-v1.8.3
 
 ### Added

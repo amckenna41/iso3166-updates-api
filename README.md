@@ -99,15 +99,54 @@ The main paths/endpoints available in the API are - `/api/all`, `/api/alpha`, `/
 * `/api`: main homepage and API documentation.
 
 ### Attributes
-There are three main query string parameters that can be passed through several of the endpoints of the API:
+Each update record returned by the API has the following data attributes:
 
 * <b>Change</b>: overall summary of change/update made.
 * <b>Description of Change</b>: more in-depth info about the change/update that was made, including any remarks listed on the official ISO page.
-* <b>Date Issue</b>: date that the change was communicated.
+* <b>Date Issued</b>: date that the change was communicated.
 * <b>Source</b>: name and or edition of newsletter that the ISO 3166 change/update was communicated in (pre 2013), or the link to the country's ISO Online Browsing Platform page.
 
+### Response Envelope
+All successful (HTTP 200) responses are wrapped in a consistent JSON envelope:
+
+```json
+{
+  "data": { ... },
+  "metadata": {
+    "count": 250,
+    "generated": "2024-01-15T12:34:56Z"
+  }
+}
+```
+
+Paginated ``/api/all`` responses additionally include `total`, `offset`, and `limit` fields in `metadata`:
+
+```json
+{
+  "data": { ... },
+  "metadata": {
+    "count": 10,
+    "generated": "2024-01-15T12:34:56Z",
+    "total": 250,
+    "offset": 0,
+    "limit": 10
+  }
+}
+```
+
+Error responses (HTTP 400) are **not** wrapped and return the error object directly: ``{"message": "...", "path": "...", "status": 400}``.
+
+### Rate Limit Headers
+All responses include the following informational rate-limit headers. These are advisory only — the API runs on
+serverless infrastructure where per-client enforcement across instances would require a persistent backend such as Redis.
+
+| Header | Value | Meaning |
+|---|---|---|
+| `X-RateLimit-Limit` | `500` | Intended maximum requests per hour |
+| `X-RateLimit-Policy` | `500;w=3600` | RFC-style policy string (500 req per 3600 s window) |
+
 ### Query String Parameters
-There are three main query string parameters that can be passed through several of the endpoints of the API:
+The following query string parameters can be passed through the API endpoints:
 
 * <b>sortBy</b>: sort the output results by publication date (Date Issued), either descending or ascending. By default, 
 the updates data will be returned alphabetically, according to ISO 3166 2 letter country code, but you can order 
@@ -124,6 +163,17 @@ having a lower value will return less exact but more matches, e.g ``/api/search/
 The match score is the % of a match each returned updates data object is to the search terms, with 100% being an 
 exact match. By default the match score is returned for each object, e.g ``/api/search/addition?excludeMatchScore=1``, 
 ``/api/search/New York?excludeMatchScore=1`` (default=0).
+* <b>exclude</b>: URL-safe alternative to the ``<>YEAR`` path syntax for year-based endpoints. Use 
+``/api/year?exclude=2020`` instead of ``/api/year/<>2020`` to exclude a specific year, e.g. ``/api/year?exclude=2020``, 
+``/api/alpha/DE?exclude=2019``.
+* <b>fields</b>: comma-separated list of field names to include in each update record. Accepted values are `Change`, 
+`Description of Change`, `Date Issued`, `Source`, `Country Code`, and `Match Score`. Unknown field names are 
+silently ignored; if no valid fields remain the full record is returned. Applies to all endpoints, e.g. 
+``/api/all?fields=Change,Date Issued``, ``/api/year/2020?fields=Change,Source``.
+* <b>limit</b>: (``/api/all`` only) maximum number of countries (or records when sorted by date) to return per page. 
+Use together with `offset` for pagination, e.g. ``/api/all?limit=10&offset=0``.
+* <b>offset</b>: (``/api/all`` only) number of countries (or records when sorted by date) to skip before returning 
+results. Use together with `limit` for pagination, e.g. ``/api/all?limit=10&offset=20``.
 
 Staying up to date
 ------------------

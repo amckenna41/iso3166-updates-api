@@ -1,6 +1,7 @@
 flask
+flask-cors
 iso3166
-iso3166-updates>=1.8.4
+iso3166-updates>=1.8.7
 python-dateutil
 requests
 thefuzz

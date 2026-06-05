@@ -1,0 +1,5 @@
+# Test-only dependencies — install with: pip install -r requirements-test.txt
+-r requirements.txt
+beautifulsoup4
+fake_useragent
+jsonschema

@@ -1,12 +1,14 @@
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template, jsonify, send_from_directory
 import iso3166
 from iso3166_updates import *
 import re
+import os
 import urllib.parse
 from thefuzz import fuzz, process
 from urllib.parse import unquote
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import lru_cache
+from flask_cors import CORS
 
 ########################################################## Endpoints ##########################################################
 '''
@@ -51,8 +53,16 @@ being an exact match. By default the match score is returned for each object, e.
 #initialise Flask app
 app = Flask(__name__)
 
+#enable Cross-Origin Resource Sharing for all routes
+CORS(app)
+
 #register routes/endpoints with or without trailing slash
 app.url_map.strict_slashes = False
+
+# Rate-limit policy constants (informational — enforcement across distributed/serverless instances requires a
+# persistent backend such as Redis; these headers document the intended policy for API consumers).
+_RATE_LIMIT_PER_HOUR = 500
+_RATE_LIMIT_WINDOW_SECS = 3600  # 1 hour
 
 @lru_cache()
 def get_updates_instance():
@@ -102,15 +112,49 @@ def all() -> tuple[dict, int]:
     """  
     #pull sortBy/sortby query string parameter, that allows sorting by publication date, descending/ascending
     sort_by = (request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')
-    
+
+    #pull fields projection query string parameter (comma-separated field names to include in each update record)
+    fields = request.args.get('fields', default="").strip()
+
+    #pull pagination parameters (limit/offset, applied at the country level for dict responses, record level for sorted list responses)
+    try:
+        limit = int(request.args.get('limit', default=0))
+        offset = int(request.args.get('offset', default=0))
+    except ValueError:
+        return jsonify(create_error_message("The limit and offset parameters must be non-negative integers.", request.url)), 400
+
+    if limit < 0 or offset < 0:
+        return jsonify(create_error_message("The limit and offset parameters must be non-negative integers.", request.url)), 400
+
     #output var of all updates
     all_updates = get_all_updates()
-    
+
     #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date
     if (sort_by == 'dateasc' or sort_by == 'datedesc'):
         all_updates = sort_by_date(get_all_updates(), date_asc_desc=sort_by)
 
-    return jsonify(all_updates), 200
+    #calculate total record count before pagination (used in metadata)
+    if isinstance(all_updates, list):
+        total_records = len(all_updates)
+    else:
+        total_records = sum(len(v) for v in all_updates.values() if isinstance(v, list))
+
+    #apply pagination when limit or offset are explicitly specified
+    metadata_extra = {}
+    if limit > 0 or offset > 0:
+        if isinstance(all_updates, dict):
+            country_keys = list(all_updates.keys())
+            paginated_keys = country_keys[offset:offset + limit] if limit > 0 else country_keys[offset:]
+            all_updates = {k: all_updates[k] for k in paginated_keys}
+        else:  # flat list (sortBy case) — paginate by record
+            all_updates = all_updates[offset:offset + limit] if limit > 0 else all_updates[offset:]
+        metadata_extra = {"total": total_records, "offset": offset, "limit": limit if limit > 0 else None}
+
+    #apply fields projection filter
+    if fields:
+        all_updates = apply_fields_filter(all_updates, fields)
+
+    return create_response(all_updates, **metadata_extra), 200
 
 @app.route('/alpha', methods=['GET'])
 @app.route('/api/alpha', methods=['GET'])
@@ -142,7 +186,10 @@ def api_alpha(input_alpha: str="") -> tuple[dict, int]:
     iso3166_updates = {}
 
     #pull sortBy query string parameter, that allows sorting by country code or publication date, descending/ascending
-    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+    sort_by = (request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')
+
+    #pull fields projection query string parameter
+    fields = request.args.get('fields', default="").strip()
 
     #if no input alpha parameter then return error message
     if (input_alpha == ""):
@@ -158,7 +205,11 @@ def api_alpha(input_alpha: str="") -> tuple[dict, int]:
     if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(iso3166_updates) > 1:
         iso3166_updates = sort_by_date(iso3166_updates, date_asc_desc=sort_by)
 
-    return jsonify(iso3166_updates), 200
+    #apply fields projection filter
+    if fields:
+        iso3166_updates = apply_fields_filter(iso3166_updates, fields)
+
+    return create_response(iso3166_updates), 200
 
 @app.route('/year', methods=['GET'])
 @app.route('/api/year', methods=['GET'])
@@ -189,11 +240,19 @@ def api_year(input_year: str="") -> tuple[dict, int]:
     iso3166_updates = {}
     
     #pull sortBy query string parameter, that allows sorting by country code or publication date, descending/ascending
-    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+    sort_by = (request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')
+
+    #pull fields projection query string parameter
+    fields = request.args.get('fields', default="").strip()
+
+    #support ?exclude=YEAR as a clean URL-safe alternative to the <> path syntax (e.g. /api/year?exclude=2020)
+    exclude_year = request.args.get('exclude', default="").strip()
+    if exclude_year:
+        input_year = f"<>{exclude_year}"
 
     #if no input year parameter then return error message
     if (input_year == ""):
-        return jsonify(create_error_message("The year input parameter cannot be empty.", request.url)), 400    
+        return jsonify(create_error_message("The year input parameter cannot be empty. Use ?exclude=YEAR for year exclusion, e.g. /api/year?exclude=2020.", request.url)), 400    
 
     #remove any unicode characters
     input_year = urllib.parse.unquote(input_year)
@@ -208,7 +267,11 @@ def api_year(input_year: str="") -> tuple[dict, int]:
     if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(iso3166_updates) > 1:
         iso3166_updates = sort_by_date(iso3166_updates, date_asc_desc=sort_by)
 
-    return jsonify(iso3166_updates), 200
+    #apply fields projection filter
+    if fields:
+        iso3166_updates = apply_fields_filter(iso3166_updates, fields)
+
+    return create_response(iso3166_updates), 200
 
 @app.route('/api/year/<input_year>/alpha/<input_alpha>', methods=['GET'])
 @app.route('/api/alpha/<input_alpha>/year/<input_year>', methods=['GET'])
@@ -247,14 +310,22 @@ def api_alpha_year(input_alpha: str="", input_year: str="") -> tuple[dict, int]:
     alpha2_code = []
 
     #pull sortBy query string parameter, that allows sorting by country code or publication date, descending/ascending
-    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+    sort_by = (request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')
+
+    #pull fields projection query string parameter
+    fields = request.args.get('fields', default="").strip()
+
+    #support ?exclude=YEAR as a clean URL-safe alternative to the <> path syntax
+    exclude_year = request.args.get('exclude', default="").strip()
+    if exclude_year:
+        input_year = f"<>{exclude_year}"
 
     #parse alpha code parameter, split, uppercase, remove any whitespace and sort
     alpha2_code = sorted(input_alpha.strip(",").replace('%20', '').split(','))
 
     #if no input year parameter then return error message
     if (input_year == ""):
-        return jsonify(create_error_message("The year input parameter cannot be empty.", request.url)), 400    
+        return jsonify(create_error_message("The year input parameter cannot be empty. Use ?exclude=YEAR for year exclusion.", request.url)), 400    
         
     #if no input alpha parameter then return error message
     if (input_alpha == ""):
@@ -346,7 +417,11 @@ def api_alpha_year(input_alpha: str="", input_year: str="") -> tuple[dict, int]:
         #set main updates dict to temp one
         iso3166_updates = temp_iso3166_updates
 
-    return jsonify(iso3166_updates), 200
+    #apply fields projection filter
+    if fields:
+        iso3166_updates = apply_fields_filter(iso3166_updates, fields)
+
+    return create_response(iso3166_updates), 200
 
 @app.route('/api/country_name', methods=['GET'])
 @app.route('/api/country_name/<input_country_name>', methods=['GET'])
@@ -397,7 +472,10 @@ def api_country_name(input_country_name: str="") -> tuple[dict, int]:
         return jsonify(create_error_message("Likeness query string parameter value must be an between 0 and 100.", request.url)), 400 
     
     #pull sortBy query string parameter, that allows sorting by country code or publication date, descending/ascending
-    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+    sort_by = (request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')
+
+    #pull fields projection query string parameter
+    fields = request.args.get('fields', default="").strip()
 
     #remove unicode space (%20) from input parameter
     input_country_name = input_country_name.replace('%20', ' ').title()
@@ -458,7 +536,11 @@ def api_country_name(input_country_name: str="") -> tuple[dict, int]:
     if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(iso3166_updates_) > 1:
         iso3166_updates_ = sort_by_date(iso3166_updates_, date_asc_desc=sort_by)
 
-    return jsonify(iso3166_updates_), 200
+    #apply fields projection filter
+    if fields:
+        iso3166_updates_ = apply_fields_filter(iso3166_updates_, fields)
+
+    return create_response(iso3166_updates_), 200
 
 @app.route('/api/year/<input_year>/country_name/<input_country_name>', methods=['GET'])
 @app.route('/api/country_name/<input_country_name>/year/<input_year>', methods=['GET'])
@@ -511,7 +593,15 @@ def api_country_name_year(input_country_name: str="", input_year: str="") -> tup
         return jsonify(create_error_message("Likeness query string parameter value must be an between 0 and 100.", request.url)), 400 
     
     #pull sortBy query string parameter, that allows sorting by country code or publication date
-    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+    sort_by = (request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')
+
+    #pull fields projection query string parameter
+    fields = request.args.get('fields', default="").strip()
+
+    #support ?exclude=YEAR as a clean URL-safe alternative to the <> path syntax
+    exclude_year = request.args.get('exclude', default="").strip()
+    if exclude_year:
+        input_year = f"<>{exclude_year}"
 
     #remove unicode space (%20) from input parameter
     input_country_name = input_country_name.replace('%20', ' ').title()
@@ -626,12 +716,16 @@ def api_country_name_year(input_country_name: str="", input_year: str="") -> tup
 
     #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
     if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(temp_iso3166_updates) > 1:
-        iso3166_updates = sort_by_date(temp_iso3166_updates, date_asc_desc=sort_by)
+        iso3166_updates_ = sort_by_date(temp_iso3166_updates, date_asc_desc=sort_by)
     else:
         #set main updates dict to temp one
         iso3166_updates_ = temp_iso3166_updates
 
-    return jsonify(iso3166_updates_), 200
+    #apply fields projection filter
+    if fields:
+        iso3166_updates_ = apply_fields_filter(iso3166_updates_, fields)
+
+    return create_response(iso3166_updates_), 200
 
 @app.route('/api/search/', methods=['GET'])
 @app.route('/api/search/<input_search_term>', methods=['GET'])
@@ -674,7 +768,10 @@ def api_search(input_search_term: str="") -> tuple[dict, int]:
         return jsonify(create_error_message("The search input parameter cannot be empty.", request.url)), 400 
     
     #pull sortBy query string parameter, that allows sorting by country code or publication date, ascending/descending
-    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+    sort_by = (request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')
+
+    #pull fields projection query string parameter
+    fields = request.args.get('fields', default="").strip()
 
     #split search terms into comma separated list, remove all whitespace & unicode characters
     search_terms = unquote(input_search_term)
@@ -693,18 +790,22 @@ def api_search(input_search_term: str="") -> tuple[dict, int]:
     #parse query string parameter that allows user to exclude the Matching % score from search results, by default it is included in results
     exclude_match_score = (request.args.get('excludeMatchScore') or request.args.get('excludematchscore') or "false").lower().rstrip('/') in ['true', '1', 'yes']
 
-    #call search function in iso3166-updates package, passing in likeness score & excludeMatchScore parameters
-    search_results = get_updates_instance().search(search_terms, likeness_score=search_likeness_score, exclude_match_score=exclude_match_score)
+    #call search function in iso3166-updates package, passing in likeness score & includeMatchScore parameters
+    search_results = get_updates_instance().search(search_terms, likeness_score=search_likeness_score, include_match_score=not exclude_match_score)
 
     #return message that no search results were found
     if not search_results:
-        return jsonify({"Message": f"No matching updates found with the given search term(s): {search_terms}. Try using the query string parameter '?likeness' and reduce the likeness score to expand the search space, '?likeness=30' will return subdivision data that have a 30% match to the input name. The current likeness score is set to {search_likeness_score}."}), 200
+        return create_response({"Message": f"No matching updates found with the given search term(s): {search_terms}. Try using the query string parameter '?likeness' and reduce the likeness score to expand the search space, '?likeness=30' will return subdivision data that have a 30% match to the input name. The current likeness score is set to {search_likeness_score}."}), 200
 
     #if sortBy query string parameter set, call sort_by_date function to sort all updates data via the publication date, ascending or descending, don't sort if just one country object present
     if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(search_results) > 1:
         search_results = sort_by_date(search_results, date_asc_desc=sort_by)
 
-    return jsonify(search_results), 200
+    #apply fields projection filter
+    if fields:
+        search_results = apply_fields_filter(search_results, fields)
+
+    return create_response(search_results), 200
 
 @app.route('/api/date_range/<input_date_range>', methods=['GET'])
 @app.route('/api/date_range', methods=['GET'])
@@ -738,7 +839,10 @@ def api_date_range(input_date_range: str="") -> tuple[dict, int]:
     iso3166_updates = {}
 
     #pull sortBy query string parameter, that allows sorting publication date, ascending/descending
-    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+    sort_by = (request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')
+
+    #pull fields projection query string parameter
+    fields = request.args.get('fields', default="").strip()
 
     #return error if input data empty
     if (input_date_range == ""):
@@ -806,7 +910,11 @@ def api_date_range(input_date_range: str="") -> tuple[dict, int]:
     if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(iso3166_updates) > 1:
         iso3166_updates = sort_by_date(iso3166_updates, date_asc_desc=sort_by)
 
-    return jsonify(iso3166_updates), 200
+    #apply fields projection filter
+    if fields:
+        iso3166_updates = apply_fields_filter(iso3166_updates, fields)
+
+    return create_response(iso3166_updates), 200
 
 @app.route('/api/date_range/<input_date_range>/alpha/<input_alpha>', methods=['GET'])
 @app.route('/api/alpha/<input_alpha>/date_range/<input_date_range>', methods=['GET'])
@@ -842,7 +950,10 @@ def api_date_range_alpha(input_alpha: str="", input_date_range: str="") -> tuple
     iso3166_updates = {}
 
     #pull sortBy query string parameter, that allows sorting by publication date, ascending/descending
-    sort_by = request.args.get('sortBy', default="") or request.args.get('sortby', default="").lower().rstrip('/')
+    sort_by = (request.args.get('sortBy') or request.args.get('sortby') or "").lower().rstrip('/')
+
+    #pull fields projection query string parameter
+    fields = request.args.get('fields', default="").strip()
 
     #return error if input data empty
     if (input_date_range == ""):
@@ -920,7 +1031,11 @@ def api_date_range_alpha(input_alpha: str="", input_date_range: str="") -> tuple
     if (sort_by == 'dateasc' or sort_by == 'datedesc') and len(iso3166_updates) > 1:
         iso3166_updates = sort_by_date(iso3166_updates, date_asc_desc=sort_by)
 
-    return jsonify(iso3166_updates), 200
+    #apply fields projection filter
+    if fields:
+        iso3166_updates = apply_fields_filter(iso3166_updates, fields)
+
+    return create_response(iso3166_updates), 200
 
 '''
 /api/country_name and /api/country_name/year path/endpoints can accept multiple country names, 
@@ -958,7 +1073,7 @@ names_converted = {"UAE": "United Arab Emirates", "Brunei": "Brunei Darussalam",
                     "Saint Helena": "Saint Helena, Ascension and Tristan da Cunha", "St Helena": "Saint Helena, Ascension and Tristan da Cunha",              
                     "Saint Kitts": "Saint Kitts and Nevis", "St Kitts": "Saint Kitts and Nevis", "St Vincent": "Saint Vincent and the Grenadines", 
                     "St Lucia": "Saint Lucia", "Saint Vincent": "Saint Vincent and the Grenadines", "Russia": "Russian Federation", 
-                    "Sao Tome and Principe":" São Tomé and Príncipe", "Sint Maarten": "Sint Maarten (Dutch part)", "Syria": "Syrian Arab Republic", 
+                    "Sao Tome and Principe": "São Tomé and Príncipe", "Sint Maarten": "Sint Maarten (Dutch part)", "Syria": "Syrian Arab Republic", 
                     "Svalbard": "Svalbard and Jan Mayen", "French Southern and Antarctic Lands": "French Southern Territories", "Turkey": "Türkiye", 
                     "Taiwan": "Taiwan, Province of China", "Tanzania": "Tanzania, United Republic of", "T%C3%Bcrkiye": "Türkiye", "USA": "United States of America", 
                     "United States": "United States of America", "Vatican City": "Holy See", "Vatican": "Holy See", "Venezuela": 
@@ -1053,7 +1168,6 @@ def validate_year(year: str) -> tuple[list,bool,bool,bool,bool,bool,str]:
     year_not_equal = False
     year_error = False
     year_error_message = ""
-    _ = False #this is a placeholder bool for the error return messages to represent the vars we dont need to return
 
     #parse alpha code parameter, split into list, remove any whitespace and sort
     year = sorted(year.replace(' ', '').replace('%20', '').split(','))
@@ -1075,8 +1189,8 @@ def validate_year(year: str) -> tuple[list,bool,bool,bool,bool,bool,str]:
 
             #validate year format
             if not re.match(r"^1[0-9]{3}$|^2[0-9]{3}$", y):
-                year_error, year_error_message = 1, f"Invalid year input, must be a valid year >= 1996, got {year_}."
-                return _, _, _, _, _, year_error, year_error_message
+                year_error, year_error_message = True, f"Invalid year input, must be a valid year >= 1996, got {year_}."
+                return [], False, False, False, False, year_error, year_error_message
 
     #a '-' separating 2 years implies a year range
     #a ',' separating 2 years implies a list of years
@@ -1094,8 +1208,8 @@ def validate_year(year: str) -> tuple[list,bool,bool,bool,bool,bool,str]:
             year[0], year[1] = year[1], year[0]
         #raise error if more than 2 years in list
         if (len(year) > 2):
-            year_error, year_error_message = 1, f"If using a range of years, there must only be 2 years separated by a '-': {year}."
-            return _, _, _, _, _, year_error, year_error_message
+            year_error, year_error_message = True, f"If using a range of years, there must only be 2 years separated by a '-': {year}."
+            return [], False, False, False, False, year_error, year_error_message
     #parse array for using greater than symbol
     elif ('>' in year[0]):
         year = list(year[0].rpartition(">")[1:])
@@ -1103,8 +1217,8 @@ def validate_year(year: str) -> tuple[list,bool,bool,bool,bool,bool,str]:
         year.remove('>')
         #raise error if more than 2 years in list
         if (len(year) > 2):
-            year_error, year_error_message = 1, f"If greater than year input, there must only be 1 year prepended by a '>': {year}."
-            return _, _, _, _, _, year_error, year_error_message
+            year_error, year_error_message = True, f"If greater than year input, there must only be 1 year prepended by a '>': {year}."
+            return [], False, False, False, False, year_error, year_error_message
     #parse array for using less than symbol
     elif ('<' in year[0]):
         year = list(year[0].rpartition("<")[1:])
@@ -1112,8 +1226,8 @@ def validate_year(year: str) -> tuple[list,bool,bool,bool,bool,bool,str]:
         year.remove('<')
         #raise error if more than 2 years in list
         if (len(year) > 2):
-            year_error, year_error_message = 1, f"If less than year input, there must only be 1 year prepended by a '<': {year}."
-            return _, _, _, _, _, year_error, year_error_message
+            year_error, year_error_message = True, f"If less than year input, there must only be 1 year prepended by a '<': {year}."
+            return [], False, False, False, False, year_error, year_error_message
     #split years into comma separated list of multiple years if multiple years are input
     elif (',' in year[0]):
         year = year[0].split(',')
@@ -1121,8 +1235,8 @@ def validate_year(year: str) -> tuple[list,bool,bool,bool,bool,bool,str]:
     #raise error if more than one year related symbols are in year str
     for year_ in year:
         if any(symbol in year_ for symbol in ["-", "<", ">"]):
-            year_error, year_error_message = 1, f"Only one type of symbol should be input for year e.g '-', '<' or '>': {year}."
-            return _, _, _, _, _, year_error, year_error_message
+            year_error, year_error_message = True, f"Only one type of symbol should be input for year e.g '-', '<' or '>': {year}."
+            return [], False, False, False, False, year_error, year_error_message
     
     return year, year_range, year_greater_than, year_less_than, year_not_equal, year_error, year_error_message
 
@@ -1220,33 +1334,95 @@ def convert_date_format(date: str) -> str|None:
         #return None if date cannot be converted into desired format
         return None
 
-    #try to parse the date using the expected "%Y-%m-%d" format
-    try:
-        parsed_date = datetime.strptime(date, "%Y-%m-%d")
-        return date  
-    #if parsing failed, try the next format 
-    except ValueError:
-        pass  
-
-    #try to parse the date using the "%d/%m/%Y" format
-    try:
-        parsed_date = datetime.strptime(date, "%d/%m/%Y")
-        return parsed_date.strftime("%Y-%m-%d")  
-    #if parsing failed, skip to valueError below
-    except ValueError:
-        pass 
-
-    #return None if date format not valid
-    return None
-
 def create_error_message(message: str, path: str, status: int = 400) -> dict:
     """ Helper function that returns error message when one occurs in Flask app. """
     return {"message": message, "path": path, "status": status}
 
+def create_response(data, **metadata_extra):
+    """
+    Build a standardised response envelope: {"data": ..., "metadata": {"count": N, "generated": "...", ...}}.
+    This ensures a consistent response shape across all successful endpoints.
+
+    Parameters
+    ==========
+    :data: dict | list
+        The payload to return inside the envelope.
+    :**metadata_extra:
+        Any additional key/value pairs to merge into the metadata object (e.g. pagination fields).
+
+    Returns
+    =======
+    :flask.Response:
+        jsonified envelope response.
+    """
+    if isinstance(data, list):
+        count = len(data)
+    elif isinstance(data, dict):
+        count = sum(len(v) for v in data.values() if isinstance(v, list))
+    else:
+        count = 0
+
+    metadata = {
+        "count": count,
+        "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    metadata.update(metadata_extra)
+    return jsonify({"data": data, "metadata": metadata})
+
+def apply_fields_filter(data, fields_str: str):
+    """
+    Filter the fields of each update record in the response to only include
+    those listed in the comma-separated ``fields_str`` parameter.
+
+    Parameters
+    ==========
+    :data: dict | list
+        ISO 3166 updates payload (keyed by alpha-2 or a flat list).
+    :fields_str: str
+        Comma-separated field names to keep, e.g. "Change,Date Issued".
+
+    Returns
+    =======
+    :data: dict | list
+        Filtered payload, or the original if fields_str is empty/invalid.
+    """
+    if not fields_str:
+        return data
+
+    field_list = [f.strip() for f in fields_str.split(",") if f.strip()]
+    valid_fields = {"Change", "Description of Change", "Date Issued", "Source", "Country Code", "Match Score"}
+    field_list = [f for f in field_list if f in valid_fields]
+    if not field_list:
+        return data
+
+    if isinstance(data, list):
+        return [{k: v for k, v in item.items() if k in field_list} for item in data]
+    elif isinstance(data, dict):
+        return {
+            code: [{k: v for k, v in upd.items() if k in field_list} for upd in updates]
+            if isinstance(updates, list) else updates
+            for code, updates in data.items()
+        }
+    return data
+
+@app.after_request
+def add_rate_limit_headers(response):
+    """
+    Append informational rate-limit headers to every response so that API consumers
+    are aware of the intended usage policy.  Actual per-client enforcement requires
+    a persistent counter backend (e.g. Redis) which is not available in a stateless
+    serverless deployment; these headers document the policy only.
+    """
+    response.headers.setdefault('X-RateLimit-Limit', str(_RATE_LIMIT_PER_HOUR))
+    response.headers.setdefault('X-RateLimit-Policy', f'{_RATE_LIMIT_PER_HOUR};w={_RATE_LIMIT_WINDOW_SECS}')
+    return response
+
 @app.route('/clear-cache')
 @app.route('/api/clear-cache')
 def clear_cache():
-    """ Clear cache of Updates class instance and all cached subdivision data. Mainly used for dev. """
+    """ Clear cache of Updates class instance and all cached subdivision data. Only available in debug mode. """
+    if not app.debug:
+        return jsonify(create_error_message("This endpoint is only available in debug mode.", request.url, 403)), 403
     get_updates_instance.cache_clear()
     get_all_updates.cache_clear()
     return 'Cache cleared'
@@ -1256,6 +1432,14 @@ def clear_cache():
 def get_version():
     """ Get the current version of the iso3166-updates being used by the API. Mainly used for dev. """
     return get_updates_instance().__version__
+
+@app.get("/openapi.yaml")
+@app.get("/spec")
+@app.get("/api/openapi.yaml")
+@app.get("/api/spec")
+def openapi_yaml():
+    """ Serve the OpenAPI specification YAML file. """
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "openapi.yaml", mimetype="text/yaml")
 
 @app.errorhandler(404)
 def not_found(e: int) -> tuple[dict, int]:
