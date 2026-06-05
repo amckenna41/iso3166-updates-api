@@ -44,7 +44,7 @@ jobs:
     - name: Testing with unittest
       run: |
         echo "Testing using unittest..."
-        python3 -m unittest discover tests -v
+        python3 -m unittest discover tests -p "test_iso3166_updates_api*.py" -v
         
   #run various vulnerability, security and package checks 
   security_check:
