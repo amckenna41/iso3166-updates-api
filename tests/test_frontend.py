@@ -16,14 +16,55 @@ automatically to derive the root page URL served at /.
 
 import os
 import re
+import socket
+import sys
+import threading
+import time
+import urllib.error
+import urllib.request
 
 import pytest
 from playwright.sync_api import Page, expect
 
+#add the repo root to sys.path so the Flask app can be imported directly
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from index import app as flask_app
+
+
+def _find_free_port() -> int:
+    """ Return an ephemeral port that is currently unused on localhost. """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('127.0.0.1', 0))
+        return s.getsockname()[1]
+
+
+def _start_local_server() -> str:
+    """ Start the Flask app in a background daemon thread, returning its root URL. """
+    port = _find_free_port()
+    threading.Thread(
+        target=lambda: flask_app.run(host='127.0.0.1', port=port, use_reloader=False, debug=False),
+        daemon=True
+    ).start()
+
+    #poll until the server accepts connections (up to 15 seconds)
+    root_url = f"http://127.0.0.1:{port}/"
+    deadline = time.time() + 15
+    while time.time() < deadline:
+        try:
+            urllib.request.urlopen(root_url, timeout=1)
+            break
+        except urllib.error.URLError:
+            time.sleep(0.3)
+
+    return root_url
+
 
 def _page_url() -> str:
-    """Derive the root documentation page URL from BASE_URL."""
-    base = os.environ.get("BASE_URL", "http://127.0.0.1:5000/api").rstrip("/")
+    """ Derive the root documentation page URL from BASE_URL, starting a local
+    server when BASE_URL is not set so the suite is self-contained. """
+    base = os.environ.get("BASE_URL", "").rstrip("/")
+    if not base:
+        return _start_local_server()
     if base.endswith("/api"):
         base = base[:-4]
     return base + "/"
@@ -109,12 +150,13 @@ class TestNavigationMenu:
         ("content-year",                     "Year"),
         ("content-date-range",               "Date Range"),
         ("content-search",                   "Search"),
+        ("content-latest",                   "Latest"),
         ("content-contributing",             "Contributing"),
         ("content-credits",                  "Credits"),
     ]
 
     def test_menu_item_count(self, page: Page):
-        """Navigation menu should contain exactly 12 items."""
+        """Navigation menu should contain exactly 13 items."""
         page.goto(PAGE_URL)
         count = page.locator("#section-list-menu li").count()
         assert count == len(self.EXPECTED_MENU_ITEMS), (
@@ -176,6 +218,7 @@ class TestContentSections:
         "content-year",
         "content-date-range",
         "content-search",
+        "content-latest",
         "content-contributing",
         "content-credits",
     ]
@@ -207,13 +250,20 @@ class TestContentSections:
         for field in ("Change", "Description of Change", "Date Issued", "Source"):
             assert field in text, f"Attributes section missing field: '{field}'."
 
-    def test_query_string_params_section_lists_seven_params(self, page: Page):
-        """Query String Parameters section should list exactly 7 parameters."""
+    def test_query_string_params_section_lists_all_params(self, page: Page):
+        """Query String Parameters section should list exactly 9 parameters."""
         page.goto(PAGE_URL)
         items = page.locator("#content-query-string-parameters ul li")
-        assert items.count() == 7, (
-            f"Expected 7 query string parameters, got {items.count()}."
+        assert items.count() == 9, (
+            f"Expected 9 query string parameters, got {items.count()}."
         )
+
+    def test_query_string_params_documents_new_params(self, page: Page):
+        """Query String Parameters section should document the format, limit, offset and n parameters."""
+        page.goto(PAGE_URL)
+        text = page.locator("#content-query-string-parameters").text_content() or ""
+        for param in ("format", "limit", "offset", "fields", "n"):
+            assert param in text, f"Query String Parameters section missing: '{param}'."
 
     def test_query_string_params_mentions_envelope(self, page: Page):
         """Query String Parameters section should document the response envelope."""
@@ -227,11 +277,11 @@ class TestContentSections:
         page.goto(PAGE_URL)
         expect(page.locator("#content-endpoints h1")).to_contain_text("Endpoints")
 
-    def test_endpoints_section_lists_six_endpoints(self, page: Page):
-        """Endpoints section text should mention all 6 main endpoints."""
+    def test_endpoints_section_lists_all_endpoints(self, page: Page):
+        """Endpoints section text should mention all 7 main endpoints."""
         page.goto(PAGE_URL)
         text = page.locator("#content-endpoints").text_content() or ""
-        for endpoint in ("/all", "/alpha", "/year", "/country_name", "/date_range", "/search"):
+        for endpoint in ("/all", "/alpha", "/year", "/country_name", "/date_range", "/search", "/latest"):
             assert endpoint in text, f"Endpoints section missing: '{endpoint}'."
 
     def test_contributing_section_has_github_link(self, page: Page):
@@ -264,10 +314,11 @@ class TestCopyButtons:
         "copy-text-btn5": "https://iso3166-updates.vercel.app/api/year/{input_year}",
         "copy-text-btn6": "https://iso3166-updates.vercel.app/api/date_range/{input_date_range}",
         "copy-text-btn7": "https://iso3166-updates.vercel.app/api/search/{input_search_term}",
+        "copy-text-btn8": "https://iso3166-updates.vercel.app/api/latest",
     }
 
     def test_all_copy_buttons_present(self, page: Page):
-        """All 6 copy buttons should be present in the DOM."""
+        """All 7 copy buttons should be present in the DOM."""
         page.goto(PAGE_URL)
         for btn_id in self.EXPECTED_BUTTONS:
             expect(page.locator(f"#{btn_id}")).to_be_attached()

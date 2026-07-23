@@ -73,6 +73,7 @@
                 <li class="scroll-to-link" data-target="content-year" style="padding-left: 5%;"><a>Year</a></li>
                 <li class="scroll-to-link" data-target="content-date-range" style="padding-left: 5%;"><a>Date Range</a></li>
                 <li class="scroll-to-link" data-target="content-search" style="padding-left: 5%;"><a>Search</a></li>
+                <li class="scroll-to-link" data-target="content-latest" style="padding-left: 5%;"><a>Latest</a></li>
                 <li class="scroll-to-link" data-target="content-contributing"><a>Contributing</a></li>
                 <li class="scroll-to-link" data-target="content-credits"><a>Credits</a></li>
             </ul>
@@ -115,7 +116,7 @@
             <div class="overflow-hidden content-section" id="content-query-string-parameters">
                 <h1>Query String Parameters</h1>
                 <p>
-                    There are three main query string parameters that can be passed through several of the endpoints of the API:
+                    There are several query string parameters that can be passed through the endpoints of the API:
                     <ul style="color: #D6F0F0;">
                         <li><b>sortBy</b>: sort the output results by publication date (Date Issued), either descending or ascending.
                             By default, the updates data will be returned alphabetically, according to ISO 3166 2 letter country code, 
@@ -123,9 +124,9 @@
                             date descending or ascending, respectively. If an invalid value input then the output is sorted by country 
                             code. This can be appended to all of the endpoints, e.g /api/all?sortBy=dateDesc, 
                             /api/year/2010-2015?sortBy=dateAsc, /api/date_range/2019-01-01?sortBy="" (sorted by country code).</li>
-                        <li><b>likeness</b>: this is a value between 1 and 100 that increases or reduces the % of similarity/likeness that 
+                        <li><b>likeness</b>: this is a value between 0 and 100 that increases or reduces the % of similarity/likeness that 
                             the inputted search terms have to match to the updates data in the Change and Desc of Change attributes. 
-                            This can only be used in the /api/search endpoint. Having a higher value should return more exact and 
+                            This can be used in the /api/search and /api/country_name endpoints. Having a higher value should return more exact and 
                             less matches and having a lower value will return less exact but more matches, 
                             e.g /api/search/Paris?likeness=50, /api/search/canton?likeness=90 (default=100).</li>
                         <li><b>excludeMatchScore</b>: exclude the matchScore` attribute from the search results when using the /api/search 
@@ -140,19 +141,29 @@
                             are: Change, Description of Change, Date Issued, Source, Country Code, Match Score. Unknown field names 
                             are silently ignored. If no valid fields remain, the full record is returned. 
                             e.g /api/all?fields=Change,Date Issued, /api/year/2020?fields=Change,Source.</li>
-                        <li><b>limit</b>: (/api/all only) maximum number of countries (or records when sorted by date) to return per 
-                            page. Used together with <b>offset</b> for pagination. 
-                            e.g /api/all?limit=10&amp;offset=0.</li>
-                        <li><b>offset</b>: (/api/all only) number of countries (or records) to skip before returning results. 
-                            Used together with <b>limit</b> for pagination. 
+                        <li><b>limit</b>: maximum number of countries (or update records, for the flat list responses) to return per 
+                            page. Available on all of the data endpoints, used together with <b>offset</b> for pagination. 
+                            e.g /api/all?limit=10&amp;offset=0, /api/search/addition?limit=5.</li>
+                        <li><b>offset</b>: number of countries (or update records) to skip before returning results. Available on all 
+                            of the data endpoints, used together with <b>limit</b> for pagination. 
                             e.g /api/all?limit=10&amp;offset=20.</li>
+                        <li><b>format</b>: set to csv to return the updates as CSV rather than the JSON envelope, the Country Code 
+                            column identifies each update's country. Available on all of the data endpoints, 
+                            e.g /api/year/2020?format=csv, /api/latest?n=50&amp;format=csv (default=json).</li>
+                        <li><b>n</b>: (/api/latest only) the number of most recently published updates to return, must be a positive 
+                            integer, e.g /api/latest?n=5 (default=20).</li>
                     </ul>
+                    <p>The pagination is applied at the country level for the country keyed responses and at the update record level 
+                        for the flat list responses (sortBy=dateAsc/dateDesc, /api/search and /api/latest). Search terms input to the 
+                        /api/search endpoint are limited to 200 characters.</p>
                     <p>All successful responses are wrapped in a standard envelope: 
-                        <code>{"data": {...}, "meta": {"count": N, "generated": "&lt;ISO timestamp&gt;"}}</code>. 
-                        Paginated <code>/api/all</code> responses also include <code>total</code>, <code>offset</code>, 
-                        and <code>limit</code> in the meta object. Error responses (HTTP 400) are not wrapped.</p>
+                        <code>{"data": {...}, "metadata": {"count": N, "generated": "&lt;ISO timestamp&gt;"}}</code>. 
+                        Paginated responses also include <code>total</code>, <code>offset</code>, 
+                        and <code>limit</code> in the metadata object. Error responses (HTTP 400) are not wrapped.</p>
                     <p>All responses include informational rate limit headers: 
-                        <code>X-RateLimit-Limit: 500</code> and <code>X-RateLimit-Policy: 500;w=3600</code>.</p>
+                        <code>X-RateLimit-Limit: 500</code> and <code>X-RateLimit-Policy: 500;w=3600</code>. Successful JSON and CSV 
+                        responses are cacheable, carrying <code>Cache-Control: public, max-age=3600</code> and an <code>ETag</code>, 
+                        a request repeating that ETag in an <code>If-None-Match</code> header returns an empty 304 Not Modified.</p>
                 </p>
             </div>
 
@@ -264,7 +275,7 @@
             <div class="overflow-hidden content-section" id="content-endpoints">
             <h1>Endpoints</h1>
             <p>
-                The ISO 3166 Updates API currently has 6 main endpoints, /all, /alpha, /year, /country_name, /date_range and /search. A description of each along with a few examples are below.
+                The ISO 3166 Updates API currently has 7 main endpoints, /all, /alpha, /year, /country_name, /date_range, /search and /latest. A description of each along with a few examples are below.
             </p>
             </div>
 
@@ -393,6 +404,24 @@
                     <a href="https://iso3166-updates.vercel.app/api/search/remark part 2?sortBy=dateDesc" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/search/remark part 2?sortBy=dateDesc</code></a> <br>
                     <a href="https://iso3166-updates.vercel.app/api/search/2015-11-27?excludeMatchScore=1" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/search/2017-11-27?excludeMatchScore=1</code></a> <br>
 
+                </p>
+            </div>
+
+            <!-- Latest endpoint section -->
+            <div class="overflow-hidden content-section" id="content-latest">
+                <h2>Latest</h2>
+                <p>
+                    The /api/latest endpoint returns the most recently published updates/changes across all countries/territories, sorted by publication date, most 
+                    recent first. The number of updates returned is set via the 'n' query string parameter (default=20), and each returned update has the Country Code 
+                    attribute added to it. <br><br>
+                    <code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/latest</code>
+                    <button style="cursor: pointer; position: relative;" id="copy-text-btn8" data-api-url="https://iso3166-updates.vercel.app/api/latest" onclick="copyToClipboard(this)">
+                    <i class="fa fa-clone"></i>
+                        <span class="tooltip-text">Copied!</span>
+                    </button> <br><br>
+                    <a href="https://iso3166-updates.vercel.app/api/latest" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/latest</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/latest?n=5" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/latest?n=5</code></a> <br>
+                    <a href="https://iso3166-updates.vercel.app/api/latest?n=50&format=csv" target="_blank"><code style="padding-right: 10px;" class="higlighted break-word">https://iso3166-updates.vercel.app/api/latest?n=50&amp;format=csv</code></a> <br>
                 </p>
             </div>
 

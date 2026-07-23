@@ -1,6 +1,38 @@
 # Change Log
 
 
+## v1.8.8
+
+### Added
+- `/api/latest` endpoint, returning the n most recently published updates across all countries, most recent first, with the `Country Code` attribute added to each update. The amount returned is set via the `?n=` query string parameter (default=20).
+- `?format=csv` query string parameter on all data endpoints, returning the updates as CSV rather than the JSON envelope, with a `Content-Disposition` attachment header.
+- `?limit=` and `?offset=` pagination extended from `/api/all` to all of the data endpoints. Pagination is applied at the country level for the country keyed responses and at the update record level for the flat list responses (`sortBy`, `/api/search`, `/api/latest`).
+- `Cache-Control: public, max-age=3600` and `ETag` headers on successful JSON & CSV responses, a request repeating the ETag in an `If-None-Match` header returns an empty HTTP 304.
+- `.github/dependabot.yml`, weekly dependency updates for the pip and github-actions ecosystems. `iso3166-updates` pinned to an exact version in `requirements.txt` so that dependabot raises a PR for each new release of the software.
+- New test cases in `tests/test_iso3166_updates_api.py`: `test_latest_endpoint`, `test_csv_format`, `test_pagination_all_endpoints`, `test_date_range_corrected_date`, `test_search_term_length_limit`, `test_invalid_year_rejected`, `test_openapi_spec_endpoint` and `test_cache_headers`.
+
+### Changed
+- `iso3166-updates` software updated from 1.8.7 to 1.8.8.
+- Search terms input to `/api/search` limited to 200 characters, an unbounded term made the fuzzy search over the full dataset an inexpensive way to burn CPU on the serverless host (a 5,000 character term took ~12 seconds).
+- `openapi.yml` rewritten, it previously documented the separate iso3166-2 subdivisions API (wrong schemas, endpoints and server URL) rather than this one.
+- The output query string parameters (`fields`, `limit`, `offset`, `format`) are now applied via a single shared `finalise()` function rather than being duplicated per endpoint.
+- New `parse_issued_dates()`, `flatten_updates()`, `count_updates()` and `create_csv_response()` auxiliary functions, replacing the duplicated date parsing and flattening logic across the endpoints.
+- `/api/year` now validates its input year before delegating to the `iso3166-updates` package, so an invalid year returns an explicit HTTP 400 rather than an empty object.
+- `tests/test_frontend.py` starts the Flask app on an ephemeral port in a background thread when `BASE_URL` isn't set, so the frontend suite is self-contained rather than requiring a server to already be running. `pytest` & `pytest-playwright` added to `requirements-test.txt`.
+- Homepage & docs: new Latest section/nav entry, `format` & `n` query string parameters documented, and the caching, pagination scope and search term length notes added.
+
+### Fixed
+- `/api/spec`, `/api/openapi.yaml`, `/spec` & `/openapi.yaml` returned HTTP 404, the routes served `openapi.yaml` but the file in the repo is `openapi.yml`.
+- `/api/date_range`: the corrected date (the date in parenthesis in the `Date Issued` attribute) was being stripped rather than extracted, so an update corrected within the input date range but published before it was excluded from the output.
+- `names_converted` aliases: the input country name is title cased before the alias lookup, which mangled the acronym keys, so `USA`, `UAE`, `DR Congo` etc returned "No matching country name found". Lookup is now case insensitive.
+- `names_converted` values that don't exist in the `iso3166` package, so their aliases could never resolve: `Virgin Islands, (British)`, `Virgin Islands, (U.S.)`, `Congo, the Democratic Republic of the` and `São Tomé and Príncipe`.
+- `validate_year`: years 1000-1995 were accepted despite the error message stating years must be >= 1996, and a dangling year range (e.g. `2020-`) was silently treated as an open ended range rather than being rejected.
+- `validate_year`: the `<>` (not equal to) check only looked at the first year once the input had been sorted, so a multi year exclusion (e.g. `<>2011,2020`) raised an invalid symbol error.
+- `api_alpha_year`: unreachable `alpha2_code == []` branch removed, and the updates lookup no longer raises a `KeyError` (HTTP 500) for a valid alpha-2 code that is absent from the updates dataset.
+- Homepage & docs stated the response envelope key was `meta`, the API returns `metadata`, and that `likeness` was `/api/search` only (it also applies to `/api/country_name`) with a range of 1-100 (it is 0-100).
+- Docs example for the `exclude` query string parameter used `/api/alpha/DE?exclude=2019`, the parameter only applies to the year based endpoints, e.g `/api/alpha/DE/year?exclude=2019`.
+
+
 ## v1.8.7
 
 ### Added

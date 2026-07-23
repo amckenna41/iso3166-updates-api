@@ -1,208 +1,256 @@
 openapi: 3.1.0
 info:
-  title: iso3166-2 API
-  version: "1.8.6"
+  title: iso3166-updates API
+  version: "1.8.8"
   description: |
-    REST API for ISO 3166-2 subdivision data (name, localOtherName, code, parentCode, type, latLng, flag, history).
-    Base URL serves docs; all routes below are relative to /api.
+    REST API for the latest and historic ISO 3166 updates/changes, as published by the ISO.
+    Each update object has a Change, Description of Change, Date Issued and Source attribute.
+    Base URL serves the docs; all routes below are relative to /api and are also available
+    without the /api prefix.
 servers:
-  - url: https://iso3166-2-api.vercel.app/api
+  - url: https://iso3166-updates.vercel.app/api
 tags:
-  - name: Subdivisions
-  - name: Countries
+  - name: Updates
   - name: Search
   - name: Utility
 components:
   parameters:
-    FilterAttributes:
-      name: filterAttributes
+    Fields:
+      name: fields
       in: query
-      description: Comma-separated list of attributes to include (e.g., `name,type,parentCode`).
+      description: Comma-separated list of update attributes to include (e.g. `Change,Date Issued`).
       required: false
       schema: { type: string }
+    SortBy:
+      name: sortBy
+      in: query
+      description: |
+        Sort the output by publication date. `dateAsc` or `dateDesc`, any other value leaves the
+        output sorted by country code. Sorted output is a flat list rather than a country map,
+        with a `Country Code` attribute added to each update.
+      required: false
+      schema:
+        type: string
+        enum: [dateAsc, dateDesc]
     Likeness:
       name: likeness
       in: query
       description: |
-        Similarity threshold (1–100). Higher returns fewer, more exact matches.
+        Similarity threshold (0–100). Higher returns fewer, more exact matches.
         Applies to `/search/{input}` and `/country_name/{input}`.
       required: false
       schema:
         type: integer
-        minimum: 1
+        minimum: 0
         maximum: 100
         default: 100
     ExcludeMatchScore:
       name: excludeMatchScore
       in: query
-      description: Exclude `matchScore` in `/search` results when truthy.
+      description: Exclude the `Match Score` attribute from `/search` results when truthy.
       required: false
       schema:
         oneOf:
           - type: boolean
           - type: integer
+    Limit:
+      name: limit
+      in: query
+      description: |
+        Maximum number of results to return, applied per country for the country keyed
+        responses and per update record for the flat list responses. 0 means no limit.
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Offset:
+      name: offset
+      in: query
+      description: Number of results to skip before applying `limit`.
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Format:
+      name: format
+      in: query
+      description: Set to `csv` to return the updates as CSV rather than the JSON envelope.
+      required: false
+      schema:
+        type: string
+        enum: [json, csv]
+        default: json
   schemas:
     Error:
       type: object
       properties:
-        error:
+        message: { type: string }
+        path: { type: string }
+        status: { type: integer }
+      required: [message, path, status]
+    Update:
+      type: object
+      properties:
+        Change:
+          type: string
+          example: "Subdivisions added: 7 parishes."
+        Description of Change:
+          type: string
+          example: "Addition of the administrative subdivisions and of their code elements."
+        Date Issued:
+          type: string
+          description: Publication date, with a corrected date appended in parenthesis if the update was corrected.
+          example: "2011-12-13 (corrected 2011-12-15)"
+        Source:
+          type: string
+          example: "Newsletter I-2 - https://www.iso.org/iso-3166-country-codes.html"
+        Country Code:
+          type: string
+          description: Only present on the flat list responses (sortBy, /search, /latest).
+          example: "AD"
+        Match Score:
+          type: integer
+          description: Only present on /search results, unless excluded via excludeMatchScore.
+          minimum: 0
+          maximum: 100
+          example: 100
+    Metadata:
+      type: object
+      properties:
+        count: { type: integer, example: 12 }
+        generated: { type: string, format: date-time, example: "2026-07-23T13:45:02Z" }
+        total: { type: integer, description: Total records before pagination, present when limit/offset are used. }
+        offset: { type: integer }
+        limit: { type: [integer, "null"] }
+      required: [count, generated]
+    UpdatesResponse:
+      type: object
+      description: Country keyed updates envelope.
+      properties:
+        data:
           type: object
-          properties:
-            code: { type: string }
-            message: { type: string }
-          required: [code, message]
-      required: [error]
-    HistoryItem:
+          additionalProperties:
+            type: array
+            items: { $ref: "#/components/schemas/Update" }
+        metadata: { $ref: "#/components/schemas/Metadata" }
+      required: [data, metadata]
+    UpdatesListResponse:
       type: object
+      description: Flat list updates envelope, returned when the output is sorted by date or from /search and /latest.
       properties:
-        date:
-          type: string
-          format: date
-          example: "2024-11-29"
-        change:
-          type: string
-          example: "Name changed from 'Alūksnes novads' to 'Alūksne Municipality'."
-        source:
-          type: string
-          format: uri
-          example: "https://www.iso.org/obp/ui"
-    Subdivision:
-      type: object
-      properties:
-        code:
-          type: string
-          example: "FR-01"
-        name:
-          type: string
-          example: "Ain"
-        localOtherName:
-          oneOf:
-            - type: array
-              items: { type: string }
-            - type: object
-              additionalProperties:
-                type: array
-                items: { type: string }
-          example:
-            fra: ["Ain"]
-        parentCode:
-          type: [string, "null"]
-          example: null
-        type:
-          type: string
-          example: "metropolitan department"
-        latLng:
+        data:
           type: array
-          minItems: 2
-          maxItems: 2
-          items: { type: number }
-          example: [46.05, 5.35]
-        flag:
-          type: string
-          format: uri
-          example: "https://raw.githubusercontent.com/amckenna41/iso3166-flag-icons/main/flags/FR-01.svg"
-        history:
-          type: array
-          items: { $ref: "#/components/schemas/HistoryItem" }
-      required: [code, name, type]
-    SubdivisionWithScore:
-      allOf:
-        - $ref: "#/components/schemas/Subdivision"
-        - type: object
-          properties:
-            matchScore:
-              type: integer
-              minimum: 0
-              maximum: 100
-              example: 97
+          items: { $ref: "#/components/schemas/Update" }
+        metadata: { $ref: "#/components/schemas/Metadata" }
+      required: [data, metadata]
+  responses:
+    Updates:
+      description: ISO 3166 updates envelope
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/UpdatesResponse"
+              - $ref: "#/components/schemas/UpdatesListResponse"
+        text/csv:
+          schema: { type: string }
+    BadRequest:
+      description: Invalid parameter input
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
 
 paths:
   /all:
     get:
-      tags: [Countries]
-      summary: Get subdivision data for all countries
+      tags: [Updates]
+      summary: Get all updates for all countries
       parameters:
-        - $ref: "#/components/parameters/FilterAttributes"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Fields"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Format"
       responses:
-        "200":
-          description: Country map of subdivision objects
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  type: object
-                  description: Map of subdivisionCode -> Subdivision
-                  additionalProperties:
-                    $ref: "#/components/schemas/Subdivision"
-              example:
-                FR:
-                  FR-01: { code: "FR-01", name: "Ain", type: "metropolitan department" }
-                  FR-75: { code: "FR-75", name: "Paris", type: "metropolitan department" }
-                DE:
-                  DE-BE: { code: "DE-BE", name: "Berlin", type: "state" }
-        "400": { description: Bad request, invalid parameters, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "200": { $ref: "#/components/responses/Updates" }
+        "400": { $ref: "#/components/responses/BadRequest" }
   /alpha/{input}:
     get:
-      tags: [Countries]
-      summary: Get subdivision data by ISO 3166-1 code(s)
-      description: |
-        Accepts alpha-2, alpha-3, or numeric country codes. Comma-separated lists allowed (e.g. `FR,DEU,276`).
+      tags: [Updates]
+      summary: Get updates by ISO 3166-1 code(s)
+      description: Accepts alpha-2, alpha-3 or numeric country codes, comma-separated (e.g. `FR,DEU,276`).
       parameters:
         - name: input
           in: path
           required: true
           schema: { type: string }
           example: "FR,DEU,276"
-        - $ref: "#/components/parameters/FilterAttributes"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Fields"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Format"
       responses:
-        "200":
-          description: Country map of subdivision objects
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  type: object
-                  additionalProperties:
-                    $ref: "#/components/schemas/Subdivision"
-              example:
-                FR:
-                  FR-01: { code: "FR-01", name: "Ain", type: "metropolitan department" }
-                DE:
-                  DE-HE: { code: "DE-HE", name: "Hessen", type: "state" }
-        "400": { description: Invalid country code(s), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
-  /subdivision/{input}:
+        "200": { $ref: "#/components/responses/Updates" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /year/{input}:
     get:
-      tags: [Subdivisions]
-      summary: Get subdivision data by subdivision code(s)
-      description: Accepts one or more ISO 3166-2 subdivision codes, comma-separated (e.g. `LV-007,PA-3,ZA-NC`).
+      tags: [Updates]
+      summary: Get updates by year
+      description: |
+        Accepts a single year, a comma-separated list of years, a year range (`2010-2015`), a year
+        prefixed with `>` or `<` (updates greater than/less than that year) or `<>` (excluding those
+        years). The `?exclude=YEAR` query string parameter is a URL-safe alternative to `<>`.
+        Years must be >= 1996.
       parameters:
         - name: input
           in: path
           required: true
           schema: { type: string }
-          example: "LV-007,PA-3,ZA-NC"
-        - $ref: "#/components/parameters/FilterAttributes"
+          example: "2010-2015"
+        - name: exclude
+          in: query
+          description: Year/years to exclude, equivalent to the `<>` path syntax.
+          required: false
+          schema: { type: string }
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Fields"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Format"
       responses:
-        "200":
-          description: Map of subdivisionCode -> Subdivision
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  $ref: "#/components/schemas/Subdivision"
-              example:
-                "LV-007": { code: "LV-007", name: "Alūksne Municipality", type: "municipality" }
-                "PA-3":   { code: "PA-3",   name: "Colón",               type: "province" }
-        "400": { description: Invalid subdivision code(s), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "200": { $ref: "#/components/responses/Updates" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /alpha/{input}/year/{year}:
+    get:
+      tags: [Updates]
+      summary: Get updates by country code(s) and year
+      parameters:
+        - name: input
+          in: path
+          required: true
+          schema: { type: string }
+          example: "FR"
+        - name: year
+          in: path
+          required: true
+          schema: { type: string }
+          example: "2015-2020"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Fields"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Format"
+      responses:
+        "200": { $ref: "#/components/responses/Updates" }
+        "400": { $ref: "#/components/responses/BadRequest" }
   /country_name/{input}:
     get:
-      tags: [Countries]
-      summary: Get subdivision data by country name(s)
-      description: |
-        Accepts one or more country names in English, comma-separated. Fuzzy matching controlled by `likeness`.
+      tags: [Updates]
+      summary: Get updates by country name(s)
+      description: Accepts one or more country names in English, comma-separated. Fuzzy matching controlled by `likeness`.
       parameters:
         - name: input
           in: path
@@ -210,90 +258,144 @@ paths:
           schema: { type: string }
           example: "Tajikistan,Seychelles,Uganda"
         - $ref: "#/components/parameters/Likeness"
-        - $ref: "#/components/parameters/FilterAttributes"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Fields"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Format"
       responses:
-        "200":
-          description: Country map of subdivision objects
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  type: object
-                  additionalProperties:
-                    $ref: "#/components/schemas/Subdivision"
-              example:
-                TJ:
-                  TJ-DU: { code: "TJ-DU", name: "Dushanbe", type: "capital territory" }
-                SC:
-                  SC-01: { code: "SC-01", name: "Anse aux Pins", type: "district" }
-        "400": { description: Invalid or unmatched country name(s), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
-  /search/{input}:
+        "200": { $ref: "#/components/responses/Updates" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /country_name/{input}/year/{year}:
     get:
-      tags: [Search]
-      summary: Search subdivisions by name (fuzzy)
-      description: |
-        Accepts one or more subdivision names, comma-separated. Sorted by `matchScore` unless `excludeMatchScore` is truthy.
+      tags: [Updates]
+      summary: Get updates by country name(s) and year
       parameters:
         - name: input
           in: path
           required: true
           schema: { type: string }
-          example: "Saarland,Brokopondo,Delaware"
+          example: "Ireland"
+        - name: year
+          in: path
+          required: true
+          schema: { type: string }
+          example: "2015"
         - $ref: "#/components/parameters/Likeness"
-        - $ref: "#/components/parameters/ExcludeMatchScore"
-        - $ref: "#/components/parameters/FilterAttributes"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Fields"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Format"
       responses:
-        "200":
-          description: Map of subdivisionCode -> Subdivision (optionally with matchScore)
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  oneOf:
-                    - $ref: "#/components/schemas/SubdivisionWithScore"
-                    - $ref: "#/components/schemas/Subdivision"
-              example:
-                "DE-SL": { code: "DE-SL", name: "Saarland", type: "state", matchScore: 100 }
-                "SR-BR": { code: "SR-BR", name: "Brokopondo", type: "district", matchScore: 98 }
-                "US-DE": { code: "US-DE", name: "Delaware", type: "state", matchScore: 97 }
-        "400": { description: No matches or invalid input, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
-  /list_subdivisions:
+        "200": { $ref: "#/components/responses/Updates" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /date_range/{input}:
     get:
-      tags: [Utility]
-      summary: List all subdivision codes per country
-      responses:
-        "200":
-          description: Map of country alpha-2 -> array of subdivision codes
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  type: array
-                  items: { type: string }
-              example:
-                DE: ["DE-BB","DE-BE","DE-BW"]
-                OM: ["OM-BA","OM-DA","OM-MA"]
-                US: ["US-AL","US-AK","US-AZ"]
-  /list_subdivisions/{alpha}:
-    get:
-      tags: [Utility]
-      summary: List subdivision codes for a specific country
+      tags: [Updates]
+      summary: Get updates published within a date range
+      description: |
+        One or two comma-separated dates in the format YYYY-MM-DD. A single date acts as the start
+        date, with today as the end date. An update is included if either its publication date or
+        its corrected date falls within the range.
       parameters:
+        - name: input
+          in: path
+          required: true
+          schema: { type: string }
+          example: "2011-12-13,2011-12-16"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Fields"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Format"
+      responses:
+        "200": { $ref: "#/components/responses/Updates" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /date_range/{input}/alpha/{alpha}:
+    get:
+      tags: [Updates]
+      summary: Get updates within a date range for specific country code(s)
+      parameters:
+        - name: input
+          in: path
+          required: true
+          schema: { type: string }
+          example: "2011-12-13,2011-12-16"
         - name: alpha
           in: path
           required: true
           schema: { type: string }
-          example: "DE"
+          example: "AF"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Fields"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Format"
+      responses:
+        "200": { $ref: "#/components/responses/Updates" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /search/{input}:
+    get:
+      tags: [Search]
+      summary: Search updates by keyword(s)
+      description: |
+        Fuzzy search over the Change and Description of Change attributes, sorted by match score.
+        Search terms are limited to 200 characters.
+      parameters:
+        - name: input
+          in: path
+          required: true
+          schema: { type: string, maxLength: 200 }
+          example: "Paris"
+        - $ref: "#/components/parameters/Likeness"
+        - $ref: "#/components/parameters/ExcludeMatchScore"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Fields"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Format"
+      responses:
+        "200": { $ref: "#/components/responses/Updates" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /latest:
+    get:
+      tags: [Updates]
+      summary: Get the most recently published updates across all countries
+      parameters:
+        - name: n
+          in: query
+          description: Number of most recent updates to return.
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+        - $ref: "#/components/parameters/Fields"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Format"
+      responses:
+        "200": { $ref: "#/components/responses/Updates" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /version:
+    get:
+      tags: [Utility]
+      summary: Get the version of the iso3166-updates software used by the API
       responses:
         "200":
-          description: Array of subdivision codes for the given country
+          description: Version string
           content:
-            application/json:
-              schema:
-                type: array
-                items: { type: string }
-              example: ["DE-BB","DE-BE","DE-BW"]
-        "400": { description: Invalid country code, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+            text/plain:
+              schema: { type: string }
+              example: "1.8.8"
+  /spec:
+    get:
+      tags: [Utility]
+      summary: Get this OpenAPI specification
+      responses:
+        "200":
+          description: OpenAPI specification
+          content:
+            text/yaml:
+              schema: { type: string }

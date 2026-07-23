@@ -20,10 +20,10 @@
 
 Quick Start 🏃
 -------------
-* The main **iso3166-updates** software is available [here][iso3166_updates].
-* A <b>demo</b> of the API and Python software is available [here][demo_iso3166_updates].
-* A <b>Medium</b> article that dives deeper into `iso3166-updates` is available [here][medium].
-* The **documentation** for the API is available [here](https://iso3166-updates.readthedocs.io/en/latest/).
+* 💻 The main **iso3166-updates** software is available [here][iso3166_updates].
+* 🚀  A <b>demo</b> of the API and Python software is available [here][demo_iso3166_updates].
+* 📄 A <b>Medium</b> article that dives deeper into `iso3166-updates` is available [here][medium].
+* 📚 The **documentation** for the API is available [here](https://iso3166-updates.readthedocs.io/en/latest/).
 
 The main API homepage and documentation is available via the URL:
 
@@ -81,8 +81,9 @@ The other endpoints available in the API are:
 * https://iso3166-updates.vercel.app/api/alpha/<input_alpha>/year/<input_year>
 * https://iso3166-updates.vercel.app/api/date_range/<input_date_range>/alpha/<input_alpha>
 * https://iso3166-updates.vercel.app/api/date_range/<input_date_range>/year/<input_year>
+* https://iso3166-updates.vercel.app/api/latest
 
-The main paths/endpoints available in the API are - `/api/all`, `/api/alpha`, `/api/year`, `/api/country_name`, `/api/search` and `/api/date_range`.
+The main paths/endpoints available in the API are - `/api/all`, `/api/alpha`, `/api/year`, `/api/country_name`, `/api/search`, `/api/date_range` and `/api/latest`.
 
 * `/api/all`: get all of the ISO 3166 updates/changes data for all countries and publication years.
 
@@ -95,6 +96,8 @@ The main paths/endpoints available in the API are - `/api/all`, `/api/alpha`, `/
 * `/api/search`: get all the ISO 3166 updates/changes data for one or more countries that have the inputted search terms. A single keyword/term or list of them can be passed to the API e.g. `/api/search/Brazil`, `/api/search/Addition,deletion`, `/api/search/2017-11-23`. A closeness function is used to search through the updates objects, finding any applicable matches to the keywords input via the Change and Description of Change attributes. If a date is explicitly input then the Date Issued attributes will also be searched. If no matching objects found then an error will be returned. 
 
 * `/api/date_range`: get all the ISO 3166 updates/changes data for one or more countries that were published within a specified input date range e.g. `/api/date_range/2011-12-09,2014-01-10`, `/api/date_range/2013-08-02,2015-07-10`, `/api/date_range/2018-05-12`. If a single date is input it will act as the starting date within the date range, with the end of the range being the current day. If an invalid date type/format value is input then an error will be returned. This endpoint can be used in conjunction with the **alpha** endpoint to get the country updates for a specific country and date range. This will be in in the format `/api/alpha/<input_alpha>/date_range/<input_date_range>`.
+
+* `/api/latest`: get the most recently published ISO 3166 updates/changes data across all countries, sorted by publication date, most recent first. The number of updates returned is set via the **n** query string parameter e.g. `/api/latest`, `/api/latest?n=5` (default=20). Each returned update has the **Country Code** attribute added to it. If an invalid value for **n** is input then an error will be returned.
 
 * `/api`: main homepage and API documentation.
 
@@ -119,7 +122,7 @@ All successful (HTTP 200) responses are wrapped in a consistent JSON envelope:
 }
 ```
 
-Paginated ``/api/all`` responses additionally include `total`, `offset`, and `limit` fields in `metadata`:
+Paginated responses additionally include `total`, `offset`, and `limit` fields in `metadata`:
 
 ```json
 {
@@ -145,6 +148,11 @@ serverless infrastructure where per-client enforcement across instances would re
 | `X-RateLimit-Limit` | `500` | Intended maximum requests per hour |
 | `X-RateLimit-Policy` | `500;w=3600` | RFC-style policy string (500 req per 3600 s window) |
 
+### Caching
+Successful (HTTP 200) JSON and CSV responses are cacheable — the ISO 3166 updates dataset only changes a handful of
+times a year. Each response carries `Cache-Control: public, max-age=3600` and an `ETag`, and repeating a request with
+that ETag in an `If-None-Match` header returns an empty `304 Not Modified`.
+
 ### Query String Parameters
 The following query string parameters can be passed through the API endpoints:
 
@@ -154,9 +162,9 @@ by date. The parameter accepts two values: dateDesc and dateAsc - sorting the ou
 ascending, respectively. If an invalid value input then the output is sorted by country code. This can be appended 
 to all of the endpoints, e.g ``/api/all?sortBy=dateDesc``, ``/api/year/2010-2015?sortBy=dateAsc``, 
 ``/api/date_range/2019-01-01?sortBy=""`` (sorted by country code).
-* <b>likeness</b>: this is a value between 1 and 100 that increases or reduces the % of similarity/likeness that the 
+* <b>likeness</b>: this is a value between 0 and 100 that increases or reduces the % of similarity/likeness that the 
 inputted search terms have to match to the updates data in the Change and Desc of Change attributes. This can 
-only be used in the /api/search endpoint. Having a higher value should return more exact and less matches and 
+be used in the /api/search and /api/country_name endpoints. Having a higher value should return more exact and less matches and 
 having a lower value will return less exact but more matches, e.g ``/api/search/Paris?likeness=50``, 
 ``/api/search/canton?likeness=90`` (default=100).
 * <b>excludeMatchScore</b>: exclude the matchScore attribute from the search results when using the /api/search endpoint. 
@@ -164,16 +172,25 @@ The match score is the % of a match each returned updates data object is to the 
 exact match. By default the match score is returned for each object, e.g ``/api/search/addition?excludeMatchScore=1``, 
 ``/api/search/New York?excludeMatchScore=1`` (default=0).
 * <b>exclude</b>: URL-safe alternative to the ``<>YEAR`` path syntax for year-based endpoints. Use 
-``/api/year?exclude=2020`` instead of ``/api/year/<>2020`` to exclude a specific year, e.g. ``/api/year?exclude=2020``, 
-``/api/alpha/DE?exclude=2019``.
+``/api/year?exclude=2020`` instead of ``/api/year/<>2020`` to exclude a specific year. Available on the year based 
+endpoints, e.g. ``/api/year?exclude=2020``, ``/api/alpha/DE/year?exclude=2019``.
 * <b>fields</b>: comma-separated list of field names to include in each update record. Accepted values are `Change`, 
 `Description of Change`, `Date Issued`, `Source`, `Country Code`, and `Match Score`. Unknown field names are 
 silently ignored; if no valid fields remain the full record is returned. Applies to all endpoints, e.g. 
 ``/api/all?fields=Change,Date Issued``, ``/api/year/2020?fields=Change,Source``.
-* <b>limit</b>: (``/api/all`` only) maximum number of countries (or records when sorted by date) to return per page. 
-Use together with `offset` for pagination, e.g. ``/api/all?limit=10&offset=0``.
-* <b>offset</b>: (``/api/all`` only) number of countries (or records when sorted by date) to skip before returning 
-results. Use together with `limit` for pagination, e.g. ``/api/all?limit=10&offset=20``.
+* <b>limit</b>: maximum number of countries (or update records, for the flat list responses) to return per page. 
+Available on all of the data endpoints, use together with `offset` for pagination, e.g. ``/api/all?limit=10&offset=0``, 
+``/api/search/addition?limit=5``.
+* <b>offset</b>: number of countries (or update records) to skip before returning results. Available on all of the 
+data endpoints, use together with `limit` for pagination, e.g. ``/api/all?limit=10&offset=20``.
+* <b>format</b>: set to `csv` to return the updates as CSV rather than the JSON envelope, e.g. ``/api/year/2020?format=csv``, 
+``/api/latest?n=50&format=csv`` (default=json).
+* <b>n</b>: (``/api/latest`` only) number of most recently published updates to return, must be a positive integer, 
+e.g. ``/api/latest?n=5`` (default=20).
+
+The pagination is applied at the country level for the country keyed responses and at the update record level for the 
+flat list responses (``sortBy=dateAsc/dateDesc``, ``/api/search`` and ``/api/latest``). Search terms input to the 
+``/api/search`` endpoint are limited to 200 characters.
 
 Staying up to date
 ------------------

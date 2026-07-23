@@ -1,6 +1,8 @@
 import unittest
 import requests
 import re
+import csv
+import io
 import os
 import sys
 import time
@@ -87,7 +89,23 @@ class Updates_Api_Tests(unittest.TestCase):
         testing that the 'generated' timestamp in the metadata envelope is a valid ISO 8601 UTC string.
     test_country_name_aliases:
         testing that common country name aliases from the names_converted mapping resolve correctly.
-    """     
+    test_latest_endpoint:
+        testing /latest endpoint, validating the n most recently published updates are returned, most recent first.
+    test_csv_format:
+        testing the ?format=csv query parameter returns the updates data as CSV.
+    test_pagination_all_endpoints:
+        testing the ?limit and ?offset query parameters on the /search and /date_range endpoints.
+    test_date_range_corrected_date:
+        testing that an update corrected within an input date range is returned, even if published before it.
+    test_search_term_length_limit:
+        testing that an excessively long search term is rejected rather than fuzzy matched over the full dataset.
+    test_invalid_year_rejected:
+        testing that out of range (< 1996) and malformed years return a 400 error.
+    test_openapi_spec_endpoint:
+        testing the OpenAPI specification is served from the /spec and /openapi.yaml endpoints.
+    test_cache_headers:
+        testing responses are cacheable and that a request with a matching ETag returns a 304.
+    """
     @classmethod
     def setUpClass(cls):
         """ One-time class-level setup: build URLs, load the iso3166-updates object and
@@ -167,7 +185,7 @@ class Updates_Api_Tests(unittest.TestCase):
         self.assertEqual(author, "AJ", f"Expected author to be AJ, got {author}.")
 #2.)
         section_list_menu = soup.find(id='section-list-menu').find_all('li')
-        correct_section_menu = ["About", "Attributes", "Query String Parameters", "Endpoints", "All", "Alpha Code", "Country Name", "Year", "Search", "Date Range", "Contributing", "Credits"]
+        correct_section_menu = ["About", "Attributes", "Query String Parameters", "Endpoints", "All", "Alpha Code", "Country Name", "Year", "Search", "Date Range", "Latest", "Contributing", "Credits"]
         for li in section_list_menu:
             self.assertIn(li.text.strip(), correct_section_menu, f"Expected list element {li} to be in list.")
 
@@ -1507,6 +1525,101 @@ class Updates_Api_Tests(unittest.TestCase):
             headers=self.user_agent_header).json()["data"]
         self.assertIn("KR", resp_south_korea,
             f"Expected 'KR' in response for alias 'South Korea', got {list(resp_south_korea.keys())}.")
+
+    # @unittest.skip("")
+    def test_latest_endpoint(self):
+        """ Testing '/api/latest' path/endpoint, returning the n most recently published updates. """
+#1.) default n
+        test_request_latest = requests.get(self.base_url + "/latest", headers=self.user_agent_header).json()
+        self.assertEqual(len(test_request_latest["data"]), 20, f"Expected 20 updates by default, got {len(test_request_latest['data'])}.")
+        self.assertIn("Country Code", test_request_latest["data"][0], "Expected Country Code attribute in each latest update object.")
+#2.) explicit n, output should be sorted by publication date, most recent first
+        test_request_latest_5 = requests.get(self.base_url + "/latest?n=5", headers=self.user_agent_header).json()["data"]
+        self.assertEqual(len(test_request_latest_5), 5, f"Expected 5 updates, got {len(test_request_latest_5)}.")
+        latest_dates = [extract_date(update["Date Issued"]) for update in test_request_latest_5]
+        self.assertEqual(latest_dates, sorted(latest_dates, reverse=True), f"Expected updates to be sorted by date descending: {latest_dates}.")
+#3.) invalid n values
+        for invalid_n in ["0", "-1", "abc"]:
+            test_request_latest_invalid = requests.get(self.base_url + f"/latest?n={invalid_n}", headers=self.user_agent_header)
+            self.assertEqual(test_request_latest_invalid.status_code, 400, f"Expected 400 status code for n={invalid_n}.")
+
+    # @unittest.skip("")
+    def test_csv_format(self):
+        """ Testing the format=csv query string parameter returns the updates data as CSV. """
+#1.)
+        test_request_csv = requests.get(self.year_base_url + "2020?format=csv", headers=self.user_agent_header)
+        self.assertEqual(test_request_csv.status_code, 200, f"Expected 200 status code, got {test_request_csv.status_code}.")
+        self.assertIn("text/csv", test_request_csv.headers["content-type"], f"Expected a text/csv response, got {test_request_csv.headers['content-type']}.")
+        csv_rows = list(csv.DictReader(io.StringIO(test_request_csv.text)))
+        self.assertTrue(csv_rows, "Expected at least one CSV row of updates data.")
+        for column in ["Change", "Date Issued", "Country Code"]:
+            self.assertIn(column, csv_rows[0], f"Expected {column} column in CSV output, got {list(csv_rows[0].keys())}.")
+#2.) row count should match the JSON count for the same query
+        test_request_json = requests.get(self.year_base_url + "2020", headers=self.user_agent_header).json()
+        self.assertEqual(len(csv_rows), test_request_json["metadata"]["count"],
+            f"Expected the CSV row count to match the JSON count: {len(csv_rows)} != {test_request_json['metadata']['count']}.")
+
+    # @unittest.skip("")
+    def test_pagination_all_endpoints(self):
+        """ Testing the limit & offset query string parameters on the search and date range endpoints. """
+#1.) search endpoint paginates per update record
+        test_request_search = requests.get(self.search_url + "Paris?likeness=50&limit=1", headers=self.user_agent_header).json()
+        self.assertEqual(len(test_request_search["data"]), 1, f"Expected 1 search result, got {len(test_request_search['data'])}.")
+        self.assertEqual(test_request_search["metadata"]["limit"], 1, "Expected the limit to be echoed in the response metadata.")
+        self.assertGreaterEqual(test_request_search["metadata"]["total"], 1, "Expected the pre-pagination total in the response metadata.")
+#2.) date range endpoint paginates per country
+        test_request_date_range = requests.get(self.date_range_url + "2011-12-13,2011-12-16?limit=1", headers=self.user_agent_header).json()
+        self.assertEqual(len(test_request_date_range["data"]), 1, f"Expected 1 country, got {len(test_request_date_range['data'])}.")
+#3.) invalid pagination values rejected
+        self.assertEqual(requests.get(self.search_url + "Paris?limit=-1", headers=self.user_agent_header).status_code, 400,
+            "Expected 400 status code for a negative limit.")
+
+    # @unittest.skip("")
+    def test_date_range_corrected_date(self):
+        """ Testing that an update corrected within the date range is returned, even if it was originally published before it. """
+#1.) AF's 2011-12-13 update was corrected on 2011-12-15, a range starting after the original publication date should still return it
+        test_request_corrected = requests.get(self.date_range_url + "2011-12-14,2011-12-16", headers=self.user_agent_header).json()["data"]
+        corrected_updates = [update for updates in test_request_corrected.values() for update in updates if "corrected" in update["Date Issued"]]
+        self.assertTrue(corrected_updates, f"Expected at least one corrected update within the date range, got {test_request_corrected}.")
+
+    # @unittest.skip("")
+    def test_search_term_length_limit(self):
+        """ Testing that an excessively long search term is rejected rather than being fuzzy matched over the full dataset. """
+#1.)
+        test_request_long_search = requests.get(self.search_url + ("a" * 5000), headers=self.user_agent_header)
+        self.assertEqual(test_request_long_search.status_code, 400, f"Expected 400 status code, got {test_request_long_search.status_code}.")
+#2.) a term within the limit is still accepted
+        self.assertEqual(requests.get(self.search_url + "addition", headers=self.user_agent_header).status_code, 200,
+            "Expected 200 status code for a search term within the length limit.")
+
+    # @unittest.skip("")
+    def test_invalid_year_rejected(self):
+        """ Testing that out of range and malformed years are rejected by the year endpoint. """
+#1.)
+        for invalid_year in ["1000", "abcd", "2020-", "-2020"]:
+            test_request_invalid_year = requests.get(self.year_base_url + invalid_year, headers=self.user_agent_header)
+            self.assertEqual(test_request_invalid_year.status_code, 400, f"Expected 400 status code for year input {invalid_year}.")
+
+    # @unittest.skip("")
+    def test_openapi_spec_endpoint(self):
+        """ Testing the OpenAPI specification is served from its endpoints. """
+#1.)
+        for spec_path in ["/spec", "/openapi.yaml"]:
+            test_request_spec = requests.get(self.base_url + spec_path, headers=self.user_agent_header)
+            self.assertEqual(test_request_spec.status_code, 200, f"Expected 200 status code for {spec_path}, got {test_request_spec.status_code}.")
+            self.assertIn("openapi", test_request_spec.text[:100], f"Expected an OpenAPI spec from {spec_path}.")
+
+    # @unittest.skip("")
+    def test_cache_headers(self):
+        """ Testing successful API responses are cacheable and that a matching ETag returns a 304. """
+#1.)
+        test_request_all = requests.get(self.all_base_url, headers=self.user_agent_header)
+        self.assertIn("max-age", test_request_all.headers.get("Cache-Control", ""), "Expected a Cache-Control max-age header.")
+        self.assertTrue(test_request_all.headers.get("ETag"), "Expected an ETag header.")
+#2.) conditional request with the same ETag should return an empty 304
+        test_request_conditional = requests.get(self.all_base_url,
+            headers={**self.user_agent_header, "If-None-Match": test_request_all.headers["ETag"]})
+        self.assertEqual(test_request_conditional.status_code, 304, f"Expected 304 status code, got {test_request_conditional.status_code}.")
 
     # @unittest.skip("")
     def test_version(self):
