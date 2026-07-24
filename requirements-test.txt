@@ -6,3 +6,4 @@ fake_useragent
 jsonschema
 pytest
 pytest-playwright
+iso3166_updates>=1.8.8

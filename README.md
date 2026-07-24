@@ -2,7 +2,7 @@
 
 # iso3166-updates-api 🌎
 
-<!-- ![Vercel](https://vercelbadge.vercel.app/api/amckenna41/iso3166-updates-frontend) -->
+<!-- ![Vercel](https://vercelbadge.vercel.app/apLi/amckenna41/iso3166-updates-frontend) -->
 <!-- ![Vercel](https://therealsujitk-vercel-badge.vercel.app/?app=iso3166-updates-frontend) -->
 ![Vercel](https://therealsujitk-vercel-badge.vercel.app/?app=iso3166-2-api)
 [![iso3166_updates](https://img.shields.io/pypi/v/iso3166-updates)](https://pypi.org/project/iso3166-updates)
